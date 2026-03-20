@@ -7,36 +7,73 @@ import AllPaidBanner from './components/AllPaidBanner'
 import InvoiceTable from './components/InvoiceTable'
 import Charts from './components/Charts'
 import ActionLog from './components/ActionLog'
+import AgentSelector from './components/AgentSelector'
+import ScenarioSelector from './components/ScenarioSelector'
+import MetricsPanel from './components/MetricsPanel'
+import EpisodeChart from './components/EpisodeChart'
 
 export default function App() {
-  const { state, history, running, speed, setSpeed, load, reset, stepAgent, startAuto, stopAuto } = useSimulation()
+  const sim = useSimulation()
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { sim.load() }, [])
 
-  if (!state) return <LoadingScreen />
+  if (!sim.state) return <LoadingScreen />
 
-  const allPaid = state.invoices.every(i => i.paid)
+  const allPaid = sim.state.invoices.every(i => i.paid)
+  const initialCash = 10000
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-200 font-mono p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <Header state={state} />
-        <Controls
-          running={running}
-          allPaid={allPaid}
-          speed={speed}
-          onReset={reset}
-          onStep={stepAgent}
-          onStart={startAuto}
-          onStop={stopAuto}
-          onSpeedChange={setSpeed}
-        />
-        {allPaid && <AllPaidBanner totalReward={state.totalReward} />}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <InvoiceTable invoices={state.invoices} />
-          <Charts history={history} />
+      <div className="max-w-7xl mx-auto space-y-6">
+
+        <Header state={sim.state} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Left sidebar */}
+          <div className="lg:col-span-1 space-y-6">
+            <AgentSelector
+              agentType={sim.agentType}
+              epsilon={sim.epsilon}
+              onChange={sim.setAgentType}
+            />
+            <ScenarioSelector
+              scenarioId={sim.scenarioId}
+              seed={sim.seed}
+              onChange={sim.setScenarioId}
+              onSeedChange={sim.setSeed}
+            />
+            <MetricsPanel state={sim.state} initialCash={initialCash} />
+          </div>
+
+          {/* Main content */}
+          <div className="lg:col-span-3 space-y-6">
+            <Controls
+              running={sim.running}
+              allPaid={allPaid}
+              speed={sim.speed}
+              onReset={sim.reset}
+              onStep={sim.stepAgent}
+              onStart={sim.startAuto}
+              onStop={sim.stopAuto}
+              onSpeedChange={sim.setSpeed}
+            />
+            {allPaid && <AllPaidBanner totalReward={sim.state.totalReward} />}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <InvoiceTable invoices={sim.state.invoices} />
+              <Charts history={sim.history} />
+            </div>
+            <EpisodeChart
+              data={sim.episodeData}
+              episodeCount={sim.episodeCount}
+              trainingRunning={sim.trainingRunning}
+              onEpisodeCountChange={sim.setEpisodeCount}
+              onStartTraining={sim.startTraining}
+              agentType={sim.agentType}
+            />
+            <ActionLog log={sim.state.log} />
+          </div>
         </div>
-        <ActionLog log={state.log} />
+
       </div>
     </div>
   )
