@@ -30,7 +30,7 @@ export interface AgentAction {
   amount?: number
 }
 
-export type AgentType = 'rule' | 'random' | 'qtable'
+export type AgentType = 'rule' | 'random' | 'heuristic' | 'qtable'
 
 export interface ScenarioConfig {
   id: string
@@ -41,14 +41,36 @@ export interface ScenarioConfig {
 }
 
 export interface Metrics {
-  totalReward: number
-  finalCash: number
+  totalReward:    number
+  finalCash:      number
   totalPenalties: number
-  invoicesPaid: number
+  invoicesPaid:   number
   invoicesUnpaid: number
 }
 
 export interface EpisodeResult {
   episode: number
   metrics: Metrics
+}
+
+export interface AgentScenarioStats {
+  agentType:     AgentType
+  scenarioId:    string
+  avgReward:     number
+  stdReward:     number
+  avgFinalCash:  number
+  avgPenalties:  number
+  winner:        boolean
+}
+
+export interface BenchmarkResult {
+  scenarioId: string
+  stats:      AgentScenarioStats[]
+}
+
+export interface QAgentConfig {
+  alpha:        number
+  gamma:        number
+  epsilonDecay: number
+  epsilonMin:   number
 }
