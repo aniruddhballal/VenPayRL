@@ -5,7 +5,7 @@ import type {
   HyperparamSweepConfig, SweepResult, ActionRecord,
 } from './types'
 
-const BASE = 'http://localhost:3001/api'
+const BASE = import.meta.env.VITE_API_BASE
 
 export const getState     = (): Promise<SimState> =>
   axios.get(`${BASE}/state`).then(r => r.data)

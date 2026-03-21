@@ -1,10 +1,18 @@
-import express from 'express';
-import cors from 'cors';
-import { router } from './routes';
+import express from 'express'
+import cors from 'cors'
+import dotenv from 'dotenv'
+import { router } from './routes'
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-app.use('/api', router);
+dotenv.config()
 
-app.listen(3001, () => console.log('🚀 VenPayRL backend running on http://localhost:3001'));
+const app = express()
+
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+}))
+
+app.use(express.json())
+app.use('/api', router)
+
+const PORT = process.env.PORT || 3001
+app.listen(PORT, () => console.log(`🚀 running on ${PORT}`))
