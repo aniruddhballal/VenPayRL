@@ -2,7 +2,6 @@ import { CheckCircle2, Circle } from 'lucide-react'
 import AgentSelector    from './AgentSelector'
 import ScenarioSelector from './ScenarioSelector'
 import MetricsPanel     from './MetricsPanel'
-import QConfigPanel     from './QConfigPanel'
 import type { useSimulation } from '../hooks/useSimulation'
 
 interface Props { sim: ReturnType<typeof useSimulation> }
@@ -13,10 +12,10 @@ export default function Sidebar({ sim }: Props) {
   const step           = !scenarioPicked ? 1 : !agentPicked ? 2 : 3
 
   return (
-    <div style={{ width: '240px', flexShrink: 0 }} className="space-y-3">
+    <div style={{ width: '240px', flexShrink: 0 }} className="space-y-3 sticky top-20">
 
-      {/* Getting started */}
-      <div className="card p-4 space-y-2.5">
+      {/* Step guide */}
+      <div className="card p-4 space-y-2">
         <p className="label">Getting started</p>
         {[
           { n: 1, label: 'Choose a scenario', done: scenarioPicked },
@@ -28,19 +27,19 @@ export default function Sidebar({ sim }: Props) {
             <div key={s.n} className="flex items-center gap-2.5">
               <div className="relative shrink-0">
                 {s.done
-                  ? <CheckCircle2 size={16} style={{ color: 'var(--positive)' }} />
+                  ? <CheckCircle2 size={15} style={{ color: 'var(--positive)' }} />
                   : active
-                    ? <div className="relative">
-                        <Circle size={16} style={{ color: 'var(--text-primary)' }} />
+                    ? <div className="relative flex items-center justify-center">
+                        <Circle size={15} style={{ color: 'var(--text-primary)' }} />
                         <span className="absolute inset-0 rounded-full pulse-dot"
                               style={{ border: '1.5px solid var(--text-primary)' }} />
                       </div>
-                    : <Circle size={16} style={{ color: 'var(--text-muted)' }} />
+                    : <Circle size={15} style={{ color: 'var(--border-strong)' }} />
                 }
               </div>
               <span style={{
-                fontSize: '13px',
-                color: s.done ? 'var(--text-muted)' : active ? 'var(--text-primary)' : 'var(--text-muted)',
+                fontSize: '12px',
+                color:  s.done ? 'var(--text-muted)' : active ? 'var(--text-primary)' : 'var(--text-muted)',
                 fontWeight: active ? 500 : 400,
                 textDecoration: s.done ? 'line-through' : 'none',
               }}>
@@ -66,10 +65,6 @@ export default function Sidebar({ sim }: Props) {
       />
 
       {sim.state && <MetricsPanel state={sim.state} initialCash={12000} />}
-
-      {sim.agentType === 'qtable' && (
-        <QConfigPanel config={sim.qConfig} onSave={sim.saveQConfig} />
-      )}
     </div>
   )
 }
