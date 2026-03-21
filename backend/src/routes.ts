@@ -260,3 +260,72 @@ router.post('/hyperparameter-sweep', async (req: Request, res: Response) => {
 
   res.json(results)
 })
+
+router.get('/health-check', async (_req: Request, res: Response) => {
+  const agentTypes: AgentType[] = ['rule', 'random', 'heuristic', 'qtable', 'dqn']
+  const results: { agentType: AgentType; reward: number; cash: number; penalties: number; pass: boolean }[] = []
+
+  const freshQ   = new QAgent(10000, qConfig)
+  const freshDQN = new DQNAgent(10000, dqnConfig)
+
+  for (const agentType of agentTypes) {
+    const { finalState, initialCash } = await runEpisode(agentType, 'balanced', 42, freshQ, freshDQN)
+    const m = computeMetrics(finalState, initialCash)
+    results.push({
+      agentType,
+      reward:    m.totalReward,
+      cash:      m.finalCash,
+      penalties: m.totalPenalties,
+      pass:      Number.isFinite(m.totalReward) && m.finalCash >= 0,
+    })
+  }
+
+  res.json({ ok: results.every(r => r.pass), results })
+})
+
+router.get('/run-episodes-stream', (req: Request, res: Response) => {
+  const agentType: AgentType = (req.query['agentType'] as AgentType) ?? 'rule'
+  const episodes: number     = Math.min(Number(req.query['episodes'] ?? 300), 2000)
+  const scenarioId: string   = (req.query['scenarioId'] as string) ?? currentScenarioId
+  const previewEvery         = Math.max(1, Math.floor(episodes / 50)) // stream ~50 updates
+
+  res.setHeader('Content-Type',  'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection',    'keep-alive')
+  res.flushHeaders()
+
+  const send = (data: object) => res.write(`data: ${JSON.stringify(data)}\n\n`)
+
+  if (agentType === 'qtable') qAgent.resetEpsilon()
+  if (agentType === 'dqn')    dqnAgent.resetEpsilon()
+
+  const run = async () => {
+    const results: EpisodeResult[] = []
+
+    for (let ep = 0; ep < episodes; ep++) {
+      const { finalState, initialCash, loss } = await runEpisode(
+        agentType, scenarioId, currentSeed + ep, qAgent, dqnAgent
+      )
+      const result: EpisodeResult = {
+        episode: ep + 1,
+        metrics: computeMetrics(finalState, initialCash),
+        loss,
+        epsilon: agentType === 'dqn' ? dqnAgent.getEpsilon() : qAgent.getEpsilon(),
+      }
+      results.push(result)
+
+      if ((ep + 1) % previewEvery === 0 || ep === episodes - 1) {
+        send({ type: 'progress', episode: ep + 1, total: episodes, result })
+      }
+    }
+
+    state = createStateFromScenario(getScenario(scenarioId))
+    send({ type: 'done', results, epsilon: agentType === 'dqn' ? dqnAgent.getEpsilon() : qAgent.getEpsilon() })
+    res.end()
+  }
+
+  run().catch(err => {
+    send({ type: 'error', message: String(err) })
+    res.end()
+  })
+})

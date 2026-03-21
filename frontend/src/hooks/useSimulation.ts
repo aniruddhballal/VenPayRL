@@ -1,8 +1,12 @@
 import { useState, useRef, useCallback } from 'react'
-import { getState, resetSim, agentStep, runEpisodes, runExperiment, updateQConfig, updateDQNConfig, runSweep } from '../api'
+import {
+  getState, resetSim, agentStep, runExperiment,
+  updateQConfig, updateDQNConfig, runSweep, runHealthCheck, streamEpisodes,
+} from '../api'
 import type {
   SimState, HistoryPoint, AgentType, EpisodePoint, EpisodeResult,
-  BenchmarkResult, QAgentConfig, DQNConfig, HyperparamSweepConfig, SweepResult, ActionRecord,
+  BenchmarkResult, QAgentConfig, DQNConfig, HyperparamSweepConfig,
+  SweepResult, ActionRecord, HealthCheckResult,
 } from '../types'
 
 function computeMovingAvg(results: EpisodeResult[], window = 20): EpisodePoint[] {
@@ -13,10 +17,27 @@ function computeMovingAvg(results: EpisodeResult[], window = 20): EpisodePoint[]
       episode:   r.episode,
       reward:    parseFloat(r.metrics.totalReward.toFixed(2)),
       movingAvg: parseFloat(avg.toFixed(2)),
-      loss:      r.loss     ? parseFloat(r.loss.toFixed(4))     : undefined,
-      epsilon:   r.epsilon  ? parseFloat(r.epsilon.toFixed(3))  : undefined,
+      loss:      r.loss    ? parseFloat(r.loss.toFixed(4))    : undefined,
+      epsilon:   r.epsilon ? parseFloat(r.epsilon.toFixed(3)) : undefined,
     }
   })
+}
+
+function appendEpisodePoint(prev: EpisodePoint[], result: EpisodeResult, window = 20): EpisodePoint[] {
+  const slice   = [...prev.slice(-(window - 1)), result]
+  const avg     = slice.reduce((s, x) => {
+    const val = 'metrics' in x ? (x as EpisodeResult).metrics.totalReward : (x as EpisodePoint).reward
+    return s + val
+  }, 0) / slice.length
+
+  const point: EpisodePoint = {
+    episode:   result.episode,
+    reward:    parseFloat(result.metrics.totalReward.toFixed(2)),
+    movingAvg: parseFloat(avg.toFixed(2)),
+    loss:      result.loss    ? parseFloat(result.loss.toFixed(4))    : undefined,
+    epsilon:   result.epsilon ? parseFloat(result.epsilon.toFixed(3)) : undefined,
+  }
+  return [...prev, point]
 }
 
 export function useSimulation() {
@@ -33,16 +54,26 @@ export function useSimulation() {
   const [episodeCount,      setEpisodeCount]      = useState(300)
   const [episodeData,       setEpisodeData]       = useState<EpisodePoint[]>([])
   const [dqnEpisodeData,    setDqnEpisodeData]    = useState<EpisodePoint[]>([])
+  const [rawEpisodeResults, setRawEpisodeResults] = useState<EpisodeResult[]>([])
   const [trainingRunning,   setTrainingRunning]   = useState(false)
+  const [streamProgress,    setStreamProgress]    = useState<{ episode: number; total: number } | null>(null)
   const [benchmarkResults,  setBenchmarkResults]  = useState<BenchmarkResult[]>([])
   const [experimentRunning, setExperimentRunning] = useState(false)
   const [experimentSeeds,   setExperimentSeeds]   = useState(10)
   const [sweepResults,      setSweepResults]      = useState<SweepResult[]>([])
   const [sweepRunning,      setSweepRunning]      = useState(false)
-  const [qConfig,           setQConfig]           = useState<QAgentConfig>({ alpha: 0.1, gamma: 0.95, epsilonDecay: 0.995, epsilonMin: 0.05 })
-  const [dqnConfig,         setDqnConfig]         = useState<DQNConfig>({ gamma: 0.95, epsilonDecay: 0.995, epsilonMin: 0.05, batchSize: 32, memorySize: 2000, learningRate: 0.001 })
-  const [rawEpisodeResults, setRawEpisodeResults] = useState<EpisodeResult[]>([])
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [healthResults,     setHealthResults]     = useState<HealthCheckResult[]>([])
+  const [healthRunning,     setHealthRunning]     = useState(false)
+  const [qConfig,           setQConfig]           = useState<QAgentConfig>({
+    alpha: 0.1, gamma: 0.95, epsilonDecay: 0.995, epsilonMin: 0.05,
+  })
+  const [dqnConfig,         setDqnConfig]         = useState<DQNConfig>({
+    gamma: 0.95, epsilonDecay: 0.995, epsilonMin: 0.05,
+    batchSize: 32, memorySize: 2000, learningRate: 0.001,
+  })
+
+  const intervalRef      = useRef<ReturnType<typeof setInterval> | null>(null)
+  const streamCleanupRef = useRef<(() => void) | null>(null)
 
   const load = useCallback(async () => {
     const s = await getState()
@@ -52,12 +83,15 @@ export function useSimulation() {
 
   const reset = async () => {
     stopAuto()
+    if (streamCleanupRef.current) { streamCleanupRef.current(); streamCleanupRef.current = null }
     const s = await resetSim(scenarioId, seed)
     setState(s)
     setHistory([{ day: 0, cash: s.cash, reward: 0 }])
     setActionHistory([])
     setEpisodeData([])
     setDqnEpisodeData([])
+    setRawEpisodeResults([])
+    setStreamProgress(null)
   }
 
   const stepAgent = async () => {
@@ -87,17 +121,52 @@ export function useSimulation() {
     if (intervalRef.current) clearInterval(intervalRef.current)
   }
 
-  const startTraining = async () => {
+  const startTraining = () => {
+    // Cancel any existing stream
+    if (streamCleanupRef.current) { streamCleanupRef.current(); streamCleanupRef.current = null }
+
+    const isDqn  = agentType === 'dqn'
+    const setter = isDqn ? setDqnEpisodeData : setEpisodeData
+
     setTrainingRunning(true)
-    const setter = agentType === 'dqn' ? setDqnEpisodeData : setEpisodeData
+    setStreamProgress({ episode: 0, total: episodeCount })
     setter([])
-    const { results } = await runEpisodes(agentType, episodeCount, scenarioId)
-    setRawEpisodeResults(results)
-    setter(computeMovingAvg(results))
-    setTrainingRunning(false)
-    const s = await resetSim(scenarioId, seed)
-    setState(s)
-    setHistory([{ day: 0, cash: s.cash, reward: 0 }])
+    setRawEpisodeResults([])
+
+    const cleanup = streamEpisodes(
+      agentType,
+      episodeCount,
+      scenarioId,
+      // onProgress — update chart incrementally each preview tick
+      (episode, total, result) => {
+        setStreamProgress({ episode, total })
+        if (result.epsilon !== undefined) setEpsilon(result.epsilon)
+        if (result.loss    !== undefined) setLoss(result.loss)
+        setter(prev => appendEpisodePoint(prev, result))
+        setRawEpisodeResults(prev => [...prev, result])
+      },
+      // onDone — recompute full moving average cleanly from all results
+      async (results, eps) => {
+        setter(computeMovingAvg(results))
+        setRawEpisodeResults(results)
+        setEpsilon(eps)
+        setTrainingRunning(false)
+        setStreamProgress(null)
+        streamCleanupRef.current = null
+        const s = await resetSim(scenarioId, seed)
+        setState(s)
+        setHistory([{ day: 0, cash: s.cash, reward: 0 }])
+      },
+      // onError
+      (msg) => {
+        console.error('[VenPayRL] Stream error:', msg)
+        setTrainingRunning(false)
+        setStreamProgress(null)
+        streamCleanupRef.current = null
+      }
+    )
+
+    streamCleanupRef.current = cleanup
   }
 
   const startExperiment = async () => {
@@ -116,6 +185,13 @@ export function useSimulation() {
     setSweepRunning(false)
   }
 
+  const startHealthCheck = async () => {
+    setHealthRunning(true)
+    const { results } = await runHealthCheck()
+    setHealthResults(results)
+    setHealthRunning(false)
+  }
+
   const saveQConfig = async (config: QAgentConfig) => {
     setQConfig(config)
     await updateQConfig(config)
@@ -127,22 +203,32 @@ export function useSimulation() {
   }
 
   return {
-    state, history, actionHistory, running, speed, setSpeed,
+    // sim state
+    state, history, actionHistory,
+    running, speed, setSpeed,
+    // agent + scenario config
     agentType, setAgentType,
     scenarioId, setScenarioId,
     seed, setSeed,
     epsilon, loss,
+    // episode training
     episodeCount, setEpisodeCount,
     episodeData, dqnEpisodeData,
-    trainingRunning,
+    rawEpisodeResults,
+    trainingRunning, streamProgress,
+    // benchmark + experiment
     benchmarkResults,
     experimentRunning,
     experimentSeeds, setExperimentSeeds,
+    // sweep
     sweepResults, sweepRunning,
+    // health check
+    healthResults, healthRunning,
+    // q + dqn config
     qConfig, saveQConfig,
     dqnConfig, saveDQNConfig,
+    // actions
     load, reset, stepAgent, startAuto, stopAuto,
-    startTraining, startExperiment, startSweep,
-    rawEpisodeResults,
+    startTraining, startExperiment, startSweep, startHealthCheck,
   }
 }

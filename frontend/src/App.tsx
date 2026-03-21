@@ -18,6 +18,8 @@ import ScenarioDashboard     from './components/ScenarioDashboard'
 import QConfigPanel          from './components/QConfigPanel'
 import HyperparamSweep       from './components/HyperparamSweep'
 import ExportButton          from './components/ExportButton'
+import HealthCheck       from './components/HealthCheck'
+import TrainingProgress  from './components/TrainingProgress'
 
 export default function App() {
   const sim = useSimulation()
@@ -85,6 +87,14 @@ export default function App() {
               actionHistory={sim.actionHistory}
             />
 
+            {sim.trainingRunning && sim.streamProgress && (
+              <TrainingProgress
+                episode={sim.streamProgress.episode}
+                total={sim.streamProgress.total}
+                agentType={sim.agentType}
+              />
+            )}
+
             {/* Q-Table training panel */}
             {sim.agentType !== 'dqn' && (
               <EpisodeChart
@@ -120,6 +130,12 @@ export default function App() {
               trainingEpisodes={sim.episodeCount}
               onSeedsChange={sim.setExperimentSeeds}
               onRun={sim.startExperiment}
+            />
+
+            <HealthCheck
+              results={sim.healthResults}
+              running={sim.healthRunning}
+              onRun={sim.startHealthCheck}
             />
 
             <ScenarioDashboard results={sim.benchmarkResults} />

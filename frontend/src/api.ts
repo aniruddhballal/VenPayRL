@@ -45,3 +45,37 @@ axios.interceptors.response.use(
     return Promise.reject(err)
   }
 )
+
+export interface HealthCheckResult {
+  agentType: AgentType
+  reward:    number
+  cash:      number
+  penalties: number
+  pass:      boolean
+}
+
+export const runHealthCheck = (): Promise<{ ok: boolean; results: HealthCheckResult[] }> =>
+  axios.get(`${BASE}/health-check`).then(r => r.data)
+
+export function streamEpisodes(
+  agentType: AgentType,
+  episodes: number,
+  scenarioId: string,
+  onProgress: (episode: number, total: number, result: EpisodeResult) => void,
+  onDone: (results: EpisodeResult[], epsilon: number) => void,
+  onError: (msg: string) => void,
+): () => void {
+  const url = `${BASE}/run-episodes-stream?agentType=${agentType}&episodes=${episodes}&scenarioId=${scenarioId}`
+  const es  = new EventSource(url)
+
+  es.onmessage = (e) => {
+    const data = JSON.parse(e.data)
+    if (data.type === 'progress') onProgress(data.episode, data.total, data.result)
+    if (data.type === 'done')     { onDone(data.results, data.epsilon); es.close() }
+    if (data.type === 'error')    { onError(data.message); es.close() }
+  }
+
+  es.onerror = () => { onError('Stream connection lost'); es.close() }
+
+  return () => es.close() // cleanup function
+}

@@ -25,6 +25,14 @@ const agentColors: Record<AgentType, string> = {
   dqn:       'text-pink-400',
 }
 
+const agentDots: Record<AgentType, string> = {
+  rule:      'bg-blue-400',
+  random:    'bg-gray-400',
+  heuristic: 'bg-teal-400',
+  qtable:    'bg-violet-400',
+  dqn:       'bg-pink-400',
+}
+
 export default function BenchmarkTable({ results, experimentRunning, seeds, trainingEpisodes, onSeedsChange, onRun }: Props) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
@@ -66,7 +74,16 @@ export default function BenchmarkTable({ results, experimentRunning, seeds, trai
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-gray-600 border-b border-gray-800">
-                    <th className="text-left pb-2 font-normal">Agent</th>
+                    <th className="text-left pb-2 font-normal">
+                      <div className="flex items-center gap-2">
+                        Agent
+                        <div className="flex gap-1 ml-1">
+                          {(['rule','random','heuristic','qtable','dqn'] as AgentType[]).map(a => (
+                            <div key={a} title={agentLabels[a]} className={`w-2 h-2 rounded-full ${agentDots[a]}`} />
+                          ))}
+                        </div>
+                      </div>
+                    </th>
                     <th className="text-right pb-2 font-normal">Avg Reward</th>
                     <th className="text-right pb-2 font-normal">± Std</th>
                     <th className="text-right pb-2 font-normal">Avg Cash</th>

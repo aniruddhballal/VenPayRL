@@ -111,3 +111,81 @@ describe('scenario configs', () => {
     }
   })
 })
+
+describe('export end-to-end', () => {
+  it('CSV has correct headers and row count', () => {
+    const results = Array.from({ length: 30 }, (_, i) => ({
+      episode: i + 1,
+      metrics: {
+        totalReward: i * 1.5, finalCash: 9000 - i * 10,
+        cashDelta: -(i * 10), totalPenalties: i * 5,
+        invoicesPaid: 5, invoicesUnpaid: 0,
+      },
+    }))
+
+    const header = ['episode', 'reward', 'finalCash', 'cashDelta', 'penalties', 'invoicesPaid']
+    const rows   = results.map(r => [
+      r.episode, r.metrics.totalReward, r.metrics.finalCash,
+      r.metrics.cashDelta, r.metrics.totalPenalties, r.metrics.invoicesPaid,
+    ].join(','))
+    const csv = [header.join(','), ...rows].join('\n')
+
+    const lines = csv.split('\n')
+    expect(lines).toHaveLength(31) // header + 30 rows
+    expect(lines[0]).toBe('episode,reward,finalCash,cashDelta,penalties,invoicesPaid')
+    expect(lines[1]).toContain('1')
+    expect(lines[30]).toContain('30')
+  })
+
+  it('CSV values are all finite numbers — no NaN or undefined', () => {
+    const scenario = getScenario('balanced')
+    let s = createStateFromScenario(scenario)
+    for (let i = 0; i < 10; i++) {
+      s = stepSimulation(s, ruleAgentDecide(s))
+    }
+    const m = computeMetrics(s, scenario.cash)
+
+    const values = [m.totalReward, m.finalCash, m.cashDelta, m.totalPenalties]
+    for (const v of values) {
+      expect(Number.isFinite(v)).toBe(true)
+      expect(v).not.toBeNaN()
+    }
+  })
+
+  it('JSON export structure matches expected shape', () => {
+    const benchmarkResults = [
+      {
+        scenarioId: 'balanced',
+        stats: [
+          { agentType: 'rule', scenarioId: 'balanced', avgReward: 42.1, stdReward: 1.2, avgFinalCash: 8000, avgPenalties: 50, winner: true },
+          { agentType: 'random', scenarioId: 'balanced', avgReward: 20.0, stdReward: 5.0, avgFinalCash: 6000, avgPenalties: 200, winner: false },
+        ],
+      },
+    ]
+    const json   = JSON.stringify({ benchmarkResults }, null, 2)
+    const parsed = JSON.parse(json)
+
+    expect(parsed.benchmarkResults).toHaveLength(1)
+    expect(parsed.benchmarkResults[0].scenarioId).toBe('balanced')
+    expect(parsed.benchmarkResults[0].stats).toHaveLength(2)
+    expect(parsed.benchmarkResults[0].stats[0].avgReward).toBe(42.1)
+    expect(parsed.benchmarkResults[0].stats.some((s: { winner: boolean }) => s.winner)).toBe(true)
+  })
+
+  it('cashDelta is correctly negative when cash decreased', () => {
+    const scenario = getScenario('balanced')
+    let s = createStateFromScenario(scenario)
+    // Pay an invoice — cash should drop
+    const inv = s.invoices[0]!
+    s = stepSimulation(s, [{ invoiceId: inv.id, type: 'full' }])
+    const m = computeMetrics(s, scenario.cash)
+    expect(m.cashDelta).toBeLessThan(0)
+  })
+
+  it('cashDelta is zero on first step with no payments', () => {
+    const scenario = getScenario('balanced')
+    const s = createStateFromScenario(scenario)
+    const m = computeMetrics(s, scenario.cash)
+    expect(m.cashDelta).toBe(0)
+  })
+})

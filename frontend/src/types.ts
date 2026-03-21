@@ -133,3 +133,11 @@ export interface EpisodePoint {
   loss?:     number
   epsilon?:  number
 }
+
+export interface HealthCheckResult {
+  agentType:  AgentType
+  reward:     number
+  cash:       number
+  penalties:  number
+  pass:       boolean
+}

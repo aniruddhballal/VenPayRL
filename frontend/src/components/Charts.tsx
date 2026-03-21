@@ -16,8 +16,17 @@ export default function Charts({ history }: Props) {
         <ResponsiveContainer width="100%" height={160}>
           <LineChart data={history}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-            <XAxis dataKey="day" stroke="#4b5563" tick={tickStyle} />
-            <YAxis stroke="#4b5563" tick={tickStyle} />
+            <XAxis
+              dataKey="day"
+              stroke="#4b5563"
+              tick={tickStyle}
+              label={{ value: 'Day', position: 'insideBottom', offset: -2, fontSize: 10, fill: '#4b5563' }}
+            />
+            <YAxis
+              stroke="#4b5563"
+              tick={tickStyle}
+              label={{ value: 'Cash ($)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: '#4b5563' }}
+            />
             <Tooltip contentStyle={tooltipStyle} />
             <Line type="monotone" dataKey="cash" stroke="#4ade80" dot={false} strokeWidth={2} />
           </LineChart>
@@ -28,8 +37,17 @@ export default function Charts({ history }: Props) {
         <ResponsiveContainer width="100%" height={160}>
           <LineChart data={history}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-            <XAxis dataKey="day" stroke="#4b5563" tick={tickStyle} />
-            <YAxis stroke="#4b5563" tick={tickStyle} />
+            <XAxis
+              dataKey="day"
+              stroke="#4b5563"
+              tick={tickStyle}
+              label={{ value: 'Day', position: 'insideBottom', offset: -2, fontSize: 10, fill: '#4b5563' }}
+            />
+            <YAxis
+              stroke="#4b5563"
+              tick={tickStyle}
+              label={{ value: 'Reward', angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: '#4b5563' }}
+            />
             <Tooltip contentStyle={tooltipStyle} />
             <Line type="monotone" dataKey="reward" stroke="#f59e0b" dot={false} strokeWidth={2} />
           </LineChart>

@@ -90,8 +90,17 @@ export default function EpisodeChart({
             }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-            <XAxis dataKey="episode" stroke="#4b5563" tick={tickStyle} />
-            <YAxis stroke="#4b5563" tick={tickStyle} />
+            <XAxis
+              dataKey="episode"
+              stroke="#4b5563"
+              tick={tickStyle}
+              label={{ value: 'Episode', position: 'insideBottom', offset: -2, fontSize: 10, fill: '#4b5563' }}
+            />
+            <YAxis
+              stroke="#4b5563"
+              tick={tickStyle}
+              label={{ value: 'Reward', angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: '#4b5563' }}
+            />
             <RechartsTooltip contentStyle={tooltipStyle} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Line
