@@ -12,7 +12,7 @@ export default function Sidebar({ sim }: Props) {
   const step           = !scenarioPicked ? 1 : !agentPicked ? 2 : 3
 
   return (
-    <div style={{ width: '240px', flexShrink: 0 }} className="space-y-3 sticky top-20">
+    <div className="space-y-3">
 
       {/* Step guide */}
       <div className="card p-4 space-y-2">

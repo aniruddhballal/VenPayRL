@@ -16,16 +16,40 @@ export default function App() {
   if (!sim.state) return <LoadingScreen />
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg)', fontFamily: 'var(--font-sans)' }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', fontFamily: 'var(--font-sans)' }}>
       <Header state={sim.state} mode={mode} onModeChange={setMode} />
-      <div className="max-w-screen-2xl mx-auto px-6 pt-5 pb-12 flex gap-5 items-start">
-        <Sidebar sim={sim} />
-        <div className="flex-1 min-w-0">
+
+      {/* Two-pane layout with independent scrolls */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', maxWidth: '1600px', width: '100%', margin: '0 auto', padding: '0 24px' }}>
+
+        {/* Sidebar — independent scroll */}
+        <div style={{
+          width: '350px',
+          flexShrink: 0,
+          overflowY: 'auto',
+          paddingTop: '20px',
+          paddingBottom: '40px',
+          paddingRight: '16px',
+          borderRight: '1px solid var(--border)',
+        }}>
+          <Sidebar sim={sim} />
+        </div>
+
+        {/* Main content — independent scroll */}
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          paddingTop: '20px',
+          paddingBottom: '40px',
+          paddingLeft: '24px',
+          minWidth: 0,
+        }}>
           {mode === 'simulate'
             ? <SimulateView sim={sim} />
             : <AnalyseView  sim={sim} />
           }
         </div>
+
       </div>
     </div>
   )
