@@ -13,7 +13,8 @@ export function ruleAgentDecide(state: SimState): AgentAction[] {
     const urgency = (inv.dueDate + inv.delayed) - day
     const cost = inv.amount * (1 + inv.penaltyRate * inv.delayed)
 
-    if (urgency <= 2 && remaining >= cost) {
+    const urgencyRatio = inv.penaltyRate / Math.max(urgency, 1)
+    if ((urgency <= 5 || urgencyRatio >= 0.01) && remaining >= cost) {
       actions.push({ invoiceId: inv.id, type: 'full' })
       remaining -= cost
     } else if (urgency <= 0) {

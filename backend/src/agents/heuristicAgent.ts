@@ -20,12 +20,10 @@ export function heuristicAgentDecide(state: SimState): AgentAction[] {
     const cost = inv.amount * (1 + inv.penaltyRate * inv.delayed)
     const score = urgencyScore(inv, day)
 
-    if (score >= 0.02 && remaining >= cost) {
-      // High urgency — pay full
+    if (score >= 0.005 && remaining >= cost) {
       actions.push({ invoiceId: inv.id, type: 'full' })
       remaining -= cost
-    } else if (score >= 0.01 && remaining >= cost * 0.4) {
-      // Medium urgency — partial
+    } else if (score >= 0.002 && remaining >= cost * 0.4) {
       actions.push({ invoiceId: inv.id, type: 'partial', amount: cost * 0.4 })
       remaining -= cost * 0.4
     } else {

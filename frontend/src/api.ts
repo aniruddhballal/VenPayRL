@@ -34,3 +34,14 @@ export const updateDQNConfig = (config: DQNConfig): Promise<void> =>
 
 export const runSweep = (config: HyperparamSweepConfig): Promise<SweepResult[]> =>
   axios.post(`${BASE}/hyperparameter-sweep`, config).then(r => r.data)
+
+// Global error interceptor — logs all API failures to console with status
+axios.interceptors.response.use(
+  res => res,
+  err => {
+    const status  = err.response?.status ?? 'network error'
+    const url     = err.config?.url ?? 'unknown'
+    console.error(`[VenPayRL API] ${status} — ${url}`, err.response?.data ?? err.message)
+    return Promise.reject(err)
+  }
+)

@@ -46,6 +46,7 @@ export interface ScenarioConfig {
 export interface Metrics {
   totalReward:    number
   finalCash:      number
+  cashDelta:      number
   totalPenalties: number
   invoicesPaid:   number
   invoicesUnpaid: number

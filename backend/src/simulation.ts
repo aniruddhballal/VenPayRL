@@ -100,13 +100,13 @@ export function stepSimulation(
 }
 
 export function computeMetrics(state: SimState, initialCash: number): Metrics {
-  void initialCash
   const totalPenalties = state.log
     .filter(e => e.action === 'DELAYED' || e.action === 'OVERDUE')
     .reduce((sum, e) => sum + parseFloat(e.amount), 0)
   return {
     totalReward:    state.totalReward,
     finalCash:      state.cash,
+    cashDelta:      parseFloat((state.cash - initialCash).toFixed(2)),
     totalPenalties: parseFloat(totalPenalties.toFixed(2)),
     invoicesPaid:   state.invoices.filter(i => i.paid).length,
     invoicesUnpaid: state.invoices.filter(i => !i.paid).length,

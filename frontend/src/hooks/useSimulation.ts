@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { getState, resetSim, agentStep, runEpisodes, runExperiment, updateQConfig, updateDQNConfig, runSweep } from '../api'
 import type {
   SimState, HistoryPoint, AgentType, EpisodePoint, EpisodeResult,
@@ -44,11 +44,11 @@ export function useSimulation() {
   const [rawEpisodeResults, setRawEpisodeResults] = useState<EpisodeResult[]>([])
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const s = await getState()
     setState(s)
     setHistory([{ day: s.day, cash: s.cash, reward: s.totalReward }])
-  }
+  }, [])
 
   const reset = async () => {
     stopAuto()

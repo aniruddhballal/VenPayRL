@@ -134,6 +134,8 @@ export class QAgent {
     this.epsilon = Math.max(this.config.epsilonMin, this.epsilon * this.config.epsilonDecay)
   }
 
-  getEpsilon():  number { return this.epsilon }
-  resetEpsilon(): void  { this.epsilon = 1.0  }
+  getEpsilon():         number { return this.epsilon  }
+  setEpsilon(v: number): void  { this.epsilon = v     }
+  resetEpsilon():        void  { this.epsilon = 1.0   }
+  getLoss():            number { return this.lastLoss }
 }

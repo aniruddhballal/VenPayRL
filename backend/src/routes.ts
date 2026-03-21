@@ -186,7 +186,7 @@ router.post('/run-experiment', async (req: Request, res: Response) => {
           await runEpisode('qtable', scenario.id, currentSeed + ep, freshQ, freshDQN)
         }
         freshQ.updateConfig({ ...qConfig, epsilonMin: 0, epsilonDecay: 1 })
-        ;(freshQ as unknown as { epsilon: number }).epsilon = 0
+        freshQ.setEpsilon(0)
       }
 
       if (agentType === 'dqn') {
@@ -195,6 +195,7 @@ router.post('/run-experiment', async (req: Request, res: Response) => {
           await runEpisode('dqn', scenario.id, currentSeed + ep, freshQ, freshDQN)
         }
         freshDQN.updateConfig({ ...dqnConfig, epsilonMin: 0, epsilonDecay: 1 })
+        freshDQN.setEpsilon(0)
       }
 
       const rewards: number[] = [], cashes: number[] = [], penalties: number[] = []

@@ -84,8 +84,8 @@ export default function EpisodeChart({
                 finalCash:    raw.metrics.finalCash,
                 penalties:    raw.metrics.totalPenalties,
                 invoicesPaid: raw.metrics.invoicesPaid,
-                x:            window.innerWidth / 2 - 100,
-                y:            220,
+                x:            window.innerWidth / 2 - 110,
+                y:            window.innerHeight / 2 - 120,
               })
             }}
           >

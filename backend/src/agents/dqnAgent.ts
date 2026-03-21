@@ -68,7 +68,8 @@ export class DQNAgent {
 
   updateConfig(config: DQNConfig): void {
     this.config = config
-    // Rebuild with new LR
+    this.online.dispose()
+    this.target.dispose()
     this.online = this.buildNetwork(config.learningRate)
     this.target = this.buildNetwork(config.learningRate)
     this.syncTarget()
