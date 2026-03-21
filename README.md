@@ -75,7 +75,7 @@ VenPayRL/
 
 ```bash
 # Clone
-git clone https://github.com/YOUR_USERNAME/VenPayRL.git
+git clone https://github.com/aniruddhballal/VenPayRL.git
 cd VenPayRL
 
 # Backend
