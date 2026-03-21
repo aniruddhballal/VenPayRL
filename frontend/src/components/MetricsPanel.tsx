@@ -1,36 +1,43 @@
 import type { SimState } from '../types'
 
-interface Props {
-  state: SimState
-  initialCash: number
-}
+interface Props { state: SimState; initialCash: number }
 
 export default function MetricsPanel({ state, initialCash }: Props) {
   const penalties = state.log
     .filter(e => e.action === 'DELAYED' || e.action === 'OVERDUE')
-    .reduce((sum, e) => sum + parseFloat(e.amount), 0)
-
+    .reduce((s, e) => s + parseFloat(e.amount), 0)
   const cashDelta = state.cash - initialCash
 
-  const metricDefs = [
-    { label: 'Total Reward',   value: state.totalReward.toFixed(1),              color: state.totalReward >= 0 ? 'text-amber-400' : 'text-red-400', tip: 'Cumulative reward this episode. Higher = better agent decisions.' },
-    { label: 'Final Cash',     value: `$${state.cash.toLocaleString()}`,          color: 'text-green-400',  tip: 'Cash remaining at current step.' },
-    { label: 'Cash Delta',     value: `${cashDelta >= 0 ? '+' : ''}$${cashDelta.toFixed(0)}`, color: cashDelta >= 0 ? 'text-emerald-400' : 'text-red-400', tip: 'Change in cash vs starting balance.' },
-    { label: 'Penalties Paid', value: `$${penalties.toFixed(0)}`,                color: 'text-red-400',    tip: 'Total penalty dollars from delays and overdue invoices.' },
-    { label: 'Paid',           value: `${state.invoices.filter(i => i.paid).length}/${state.invoices.length}`, color: 'text-teal-400', tip: 'Invoices fully settled vs total.' },
-    { label: 'Day',            value: String(state.day),                         color: 'text-gray-300',   tip: 'Current simulation day. Episode ends at day 60.' },
+  const metrics = [
+    { label: 'Total Reward',   value: state.totalReward.toFixed(1), color: state.totalReward >= 0 ? 'var(--color-positive)' : 'var(--color-negative)', tip: 'Cumulative reward this episode' },
+    { label: 'Cash',           value: `$${state.cash.toLocaleString()}`, color: 'var(--color-positive)', tip: 'Current available cash' },
+    { label: 'Cash Δ',         value: `${cashDelta >= 0 ? '+' : ''}$${cashDelta.toFixed(0)}`, color: cashDelta >= 0 ? 'var(--color-positive)' : 'var(--color-negative)', tip: 'Change from starting cash' },
+    { label: 'Penalties',      value: `$${penalties.toFixed(0)}`, color: 'var(--color-negative)', tip: 'Total penalty dollars accrued' },
+    { label: 'Invoices',       value: `${state.invoices.filter(i => i.paid).length}/${state.invoices.length}`, color: 'var(--color-text-primary)', tip: 'Settled vs total invoices' },
+    { label: 'Day',            value: String(state.day), color: 'var(--color-text-primary)', tip: 'Current simulation day' },
   ]
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-      <h2 className="text-xs uppercase tracking-widest text-gray-500 mb-4">Metrics</h2>
+    <div className="card p-5">
+      <p className="text-[11px] uppercase tracking-[0.08em] mb-4"
+         style={{ color: 'var(--color-text-muted)' }}>
+        Metrics
+      </p>
       <div className="grid grid-cols-2 gap-3">
-        {metricDefs.map(m => (
-          <div key={m.label} className="bg-gray-950 rounded-lg p-3 group relative cursor-default">
-            <div className="text-xs text-gray-600 mb-1">{m.label}</div>
-            <div className={`text-lg font-bold font-mono ${m.color}`}>{m.value}</div>
+        {metrics.map(m => (
+          <div key={m.label}
+               className="group relative rounded-lg p-3 cursor-default"
+               style={{ background: 'var(--color-surface-raised)' }}>
+            <p className="text-[10px] uppercase tracking-[0.06em] mb-1"
+               style={{ color: 'var(--color-text-muted)' }}>
+              {m.label}
+            </p>
+            <p className="text-lg" style={{ fontFamily: 'var(--font-display)', color: m.color }}>
+              {m.value}
+            </p>
             {/* Tooltip */}
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-center">
+            <div className="glass absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-40 px-3 py-2 rounded-lg text-xs text-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+                 style={{ color: 'var(--color-text-secondary)' }}>
               {m.tip}
             </div>
           </div>

@@ -2,157 +2,24 @@ import { useEffect } from 'react'
 import { useSimulation }     from './hooks/useSimulation'
 import LoadingScreen         from './components/LoadingScreen'
 import Header                from './components/Header'
-import Controls              from './components/Controls'
-import AllPaidBanner         from './components/AllPaidBanner'
-import InvoiceTable          from './components/InvoiceTable'
-import Charts                from './components/Charts'
-import ActionLog             from './components/ActionLog'
-import ActionHeatmap         from './components/ActionHeatmap'
-import AgentSelector         from './components/AgentSelector'
-import ScenarioSelector      from './components/ScenarioSelector'
-import MetricsPanel          from './components/MetricsPanel'
-import EpisodeChart          from './components/EpisodeChart'
-import DQNPanel              from './components/DQNPanel'
-import BenchmarkTable        from './components/BenchmarkTable'
-import ScenarioDashboard     from './components/ScenarioDashboard'
-import QConfigPanel          from './components/QConfigPanel'
-import HyperparamSweep       from './components/HyperparamSweep'
-import ExportButton          from './components/ExportButton'
-import HealthCheck       from './components/HealthCheck'
-import TrainingProgress  from './components/TrainingProgress'
+import Sidebar               from './components/Sidebar'
+import SimulationPanel       from './components/SimulationPanel'
+import AnalysisPanel         from './components/AnalysisPanel'
 
 export default function App() {
   const sim = useSimulation()
-
   useEffect(() => { sim.load() }, [])
-
   if (!sim.state) return <LoadingScreen />
 
-  const allPaid     = sim.state.invoices.every(i => i.paid)
-  const initialCash = 10000
-
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-200 font-mono p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-
-        <Header state={sim.state} />
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-
-          {/* Sidebar */}
-          <div className="lg:col-span-1 space-y-6">
-            <AgentSelector
-              agentType={sim.agentType}
-              epsilon={sim.epsilon}
-              loss={sim.loss}
-              onChange={sim.setAgentType}
-            />
-            <ScenarioSelector
-              scenarioId={sim.scenarioId}
-              seed={sim.seed}
-              onChange={sim.setScenarioId}
-              onSeedChange={sim.setSeed}
-            />
-            <MetricsPanel
-              state={sim.state}
-              initialCash={initialCash}
-            />
-            {sim.agentType === 'qtable' && (
-              <QConfigPanel config={sim.qConfig} onSave={sim.saveQConfig} />
-            )}
-          </div>
-
-          {/* Main */}
-          <div className="lg:col-span-3 space-y-6">
-            <Controls
-              running={sim.running}
-              allPaid={allPaid}
-              speed={sim.speed}
-              onReset={sim.reset}
-              onStep={sim.stepAgent}
-              onStart={sim.startAuto}
-              onStop={sim.stopAuto}
-              onSpeedChange={sim.setSpeed}
-            />
-
-            {allPaid && <AllPaidBanner totalReward={sim.state.totalReward} />}
-
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              <InvoiceTable invoices={sim.state.invoices} />
-              <Charts history={sim.history} />
-            </div>
-
-            <ActionHeatmap
-              invoices={sim.state.invoices}
-              actionHistory={sim.actionHistory}
-            />
-
-            {sim.trainingRunning && sim.streamProgress && (
-              <TrainingProgress
-                episode={sim.streamProgress.episode}
-                total={sim.streamProgress.total}
-                agentType={sim.agentType}
-              />
-            )}
-
-            {/* Q-Table training panel */}
-            {sim.agentType !== 'dqn' && (
-              <EpisodeChart
-                data={sim.episodeData}
-                episodeCount={sim.episodeCount}
-                trainingRunning={sim.trainingRunning}
-                onEpisodeCountChange={sim.setEpisodeCount}
-                onStartTraining={sim.startTraining}
-                agentType={sim.agentType}
-                rawResults={sim.rawEpisodeResults}
-              />
-            )}
-
-            {/* DQN dedicated panel */}
-            {sim.agentType === 'dqn' && (
-              <DQNPanel
-                data={sim.dqnEpisodeData}
-                episodeCount={sim.episodeCount}
-                trainingRunning={sim.trainingRunning}
-                config={sim.dqnConfig}
-                epsilon={sim.epsilon}
-                loss={sim.loss}
-                onEpisodeCountChange={sim.setEpisodeCount}
-                onStartTraining={sim.startTraining}
-                onSaveConfig={sim.saveDQNConfig}
-              />
-            )}
-
-            <BenchmarkTable
-              results={sim.benchmarkResults}
-              experimentRunning={sim.experimentRunning}
-              seeds={sim.experimentSeeds}
-              trainingEpisodes={sim.episodeCount}
-              onSeedsChange={sim.setExperimentSeeds}
-              onRun={sim.startExperiment}
-            />
-
-            <HealthCheck
-              results={sim.healthResults}
-              running={sim.healthRunning}
-              onRun={sim.startHealthCheck}
-            />
-
-            <ScenarioDashboard results={sim.benchmarkResults} />
-
-            <HyperparamSweep
-              sweepResults={sim.sweepResults}
-              sweepRunning={sim.sweepRunning}
-              scenarioId={sim.scenarioId}
-              onRun={sim.startSweep}
-            />
-
-            <ExportButton
-              benchmarkResults={sim.benchmarkResults}
-              episodeData={sim.episodeData}
-            />
-
-            <ActionLog log={sim.state.log} />
+    <div className="min-h-screen bg-[#fafafa]" style={{ fontFamily: 'var(--font-sans)' }}>
+      <Header state={sim.state} />
+      <div className="max-w-screen-2xl mx-auto px-6 pb-12 pt-6">
+        <div className="flex gap-6 items-start">
+          <Sidebar sim={sim} />
+          <div className="flex-1 min-w-0 space-y-4">
+            <SimulationPanel sim={sim} />
+            <AnalysisPanel sim={sim} />
           </div>
         </div>
       </div>

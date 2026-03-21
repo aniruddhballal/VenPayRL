@@ -1,56 +1,46 @@
 import type { Invoice, ActionRecord } from '../types'
 
-interface Props {
-  invoices: Invoice[]
-  actionHistory: ActionRecord[]
-}
+interface Props { invoices: Invoice[]; actionHistory: ActionRecord[] }
 
-const actionColor: Record<string, string> = {
-  full: 'bg-emerald-500',
-  partial: 'bg-amber-500',
-  delay: 'bg-red-500',
-  overdue: 'bg-red-900',
-}
-
-const actionLabel: Record<string, string> = {
-  full: 'F',
-  partial: 'P',
-  delay: 'D',
-  overdue: 'O',
+const actionStyle: Record<string, { bg: string; text: string; label: string }> = {
+  full:    { bg: '#f0fdf4', text: 'var(--color-positive)', label: 'F' },
+  partial: { bg: '#fff7ed', text: 'var(--color-warning)',  label: 'P' },
+  delay:   { bg: '#fef2f2', text: 'var(--color-negative)', label: 'D' },
+  overdue: { bg: '#fef2f2', text: '#991b1b',               label: 'O' },
 }
 
 export default function ActionHeatmap({ invoices, actionHistory }: Props) {
-  const days = Array.from(new Set(actionHistory.map(a => a.day))).sort((a, b) => a - b)
+  const days = [...new Set(actionHistory.map(a => a.day))].sort((a, b) => a - b)
 
-  if (actionHistory.length === 0) return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-      <h2 className="text-xs uppercase tracking-widest text-gray-500 mb-3">Action Heatmap</h2>
-      <div className="h-24 flex items-center justify-center text-gray-600 text-sm">
-        Step the agent to see decision heatmap
-      </div>
-    </div>
-  )
+  if (!actionHistory.length) return null
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-      <h2 className="text-xs uppercase tracking-widest text-gray-500 mb-4">Action Heatmap</h2>
-
-      <div className="flex gap-3 mb-4 text-xs">
-        {Object.entries(actionColor).map(([k, v]) => (
-          <div key={k} className="flex items-center gap-1.5">
-            <div className={`w-3 h-3 rounded-sm ${v}`} />
-            <span className="text-gray-400 capitalize">{k}</span>
-          </div>
-        ))}
+    <div className="card p-5">
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[11px] uppercase tracking-[0.08em]"
+           style={{ color: 'var(--color-text-muted)' }}>
+          Action Heatmap
+        </p>
+        <div className="flex gap-3">
+          {Object.entries(actionStyle).map(([k, v]) => (
+            <div key={k} className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-sm" style={{ background: v.bg, border: `1px solid ${v.text}20` }} />
+              <span className="text-[10px] capitalize" style={{ color: 'var(--color-text-muted)' }}>{k}</span>
+            </div>
+          ))}
+        </div>
       </div>
-
       <div className="overflow-x-auto">
-        <table className="text-xs border-separate border-spacing-0.5">
+        <table style={{ borderSpacing: '2px', borderCollapse: 'separate' }}>
           <thead>
             <tr>
-              <th className="text-left text-gray-600 font-normal pr-3 pb-1 min-w-24">Vendor</th>
+              <th className="text-left pr-4 pb-1 text-[10px] font-normal"
+                  style={{ color: 'var(--color-text-muted)', minWidth: '100px' }}>
+                Vendor
+              </th>
               {days.map(d => (
-                <th key={d} className="text-gray-600 font-normal w-6 text-center pb-1">
+                <th key={d} className="pb-1 text-center text-[10px] font-normal w-7"
+                    style={{ color: 'var(--color-text-muted)' }}>
                   {d}
                 </th>
               ))}
@@ -59,22 +49,26 @@ export default function ActionHeatmap({ invoices, actionHistory }: Props) {
           <tbody>
             {invoices.map(inv => (
               <tr key={inv.id}>
-                <td className={`pr-3 py-0.5 ${inv.paid ? 'text-gray-600 line-through' : 'text-violet-400'}`}>
+                <td className="pr-4 py-0.5 text-xs font-medium"
+                    style={{ color: inv.paid ? 'var(--color-text-muted)' : 'var(--color-text-primary)', textDecoration: inv.paid ? 'line-through' : 'none' }}>
                   {inv.vendor}
                 </td>
                 {days.map(d => {
                   const rec = actionHistory.find(a => a.day === d && a.invoiceId === inv.id)
+                  const style = rec ? actionStyle[rec.action] : null
                   return (
                     <td key={d} className="p-0">
-                      {rec ? (
+                      {style ? (
                         <div
-                          className={`w-6 h-6 rounded-sm flex items-center justify-center text-white font-bold text-xs ${actionColor[rec.action] ?? 'bg-gray-700'}`}
-                          title={`Day ${d}: ${rec.action}`}
+                          className="w-7 h-7 rounded flex items-center justify-center text-[10px] font-semibold cursor-default"
+                          style={{ background: style.bg, color: style.text }}
+                          title={`Day ${d}: ${rec!.action}`}
                         >
-                          {actionLabel[rec.action]}
+                          {style.label}
                         </div>
                       ) : (
-                        <div className="w-6 h-6 rounded-sm bg-gray-800/40" />
+                        <div className="w-7 h-7 rounded"
+                             style={{ background: 'var(--color-surface-raised)' }} />
                       )}
                     </td>
                   )

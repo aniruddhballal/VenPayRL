@@ -1,22 +1,49 @@
 import type { SimState } from '../types'
 
-interface Props {
-  state: SimState
+interface Props { state: SimState }
+
+function StatPill({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div className="flex items-baseline gap-2">
+      <span className="text-[11px] uppercase tracking-[0.08em]"
+            style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-sans)' }}>
+        {label}
+      </span>
+      <span className="text-lg font-display tick"
+            style={{ fontFamily: 'var(--font-display)', color: color ?? 'var(--color-text-primary)' }}>
+        {value}
+      </span>
+    </div>
+  )
 }
 
 export default function Header({ state }: Props) {
+  const rewardColor = state.totalReward >= 0
+    ? 'var(--color-positive)'
+    : 'var(--color-negative)'
+
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-800 pb-5">
-      <h1 className="text-2xl font-bold text-violet-400 tracking-widest uppercase">
-        VenPayRL
-      </h1>
-      <div className="flex gap-6 text-sm text-gray-400">
-        <span>Day <strong className="text-gray-100 text-base ml-1">{state.day}</strong></span>
-        <span>Cash <strong className="text-green-400 text-base ml-1">${state.cash.toLocaleString()}</strong></span>
-        <span>Reward <strong className={`text-base ml-1 ${state.totalReward >= 0 ? 'text-amber-400' : 'text-red-400'}`}>
-          {state.totalReward.toFixed(1)}
-        </strong></span>
+    <header style={{
+      background: 'var(--color-surface)',
+      borderBottom: '1px solid var(--color-border)',
+      position: 'sticky', top: 0, zIndex: 50,
+    }}>
+      <div className="max-w-screen-2xl mx-auto px-6 h-14 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 bg-black rounded-sm flex items-center justify-center">
+            <span className="text-white text-[10px] font-semibold tracking-tight">VP</span>
+          </div>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: '18px', letterSpacing: '-0.01em' }}>
+            VenPayRL
+          </span>
+        </div>
+
+        <div className="flex items-center gap-8">
+          <StatPill label="Day"    value={String(state.day)} />
+          <StatPill label="Cash"   value={`$${state.cash.toLocaleString()}`} color="var(--color-positive)" />
+          <StatPill label="Reward" value={state.totalReward.toFixed(1)} color={rewardColor} />
+        </div>
       </div>
-    </div>
+    </header>
   )
 }
