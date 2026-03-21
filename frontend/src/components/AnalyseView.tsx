@@ -1,12 +1,12 @@
-import { ArrowRight } from 'lucide-react'
-import EpisodeChart from './EpisodeChart'
-import DQNPanel from './DQNPanel'
-import QConfigPanel from './QConfigPanel'
-import BenchmarkTable from './BenchmarkTable'
+import { ArrowRight, CheckCircle2 } from 'lucide-react'
+import EpisodeChart      from './EpisodeChart'
+import DQNPanel          from './DQNPanel'
+import QConfigPanel      from './QConfigPanel'
+import BenchmarkTable    from './BenchmarkTable'
 import ScenarioDashboard from './ScenarioDashboard'
-import HyperparamSweep from './HyperparamSweep'
-import HealthCheck from './HealthCheck'
-import ExportButton from './ExportButton'
+import HyperparamSweep   from './HyperparamSweep'
+import HealthCheck       from './HealthCheck'
+import ExportButton      from './ExportButton'
 import type { useSimulation } from '../hooks/useSimulation'
 
 interface Props { sim: ReturnType<typeof useSimulation> }
@@ -14,7 +14,9 @@ interface Props { sim: ReturnType<typeof useSimulation> }
 function SectionHeader({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="flex items-center gap-2.5 mb-4">
-      <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{title}</h2>
+      <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+        {title}
+      </h2>
       {hint && (
         <span style={{
           fontSize: '10px', fontWeight: 500, padding: '2px 7px',
@@ -34,7 +36,7 @@ function Divider() {
 }
 
 export default function AnalyseView({ sim }: Props) {
-  const isDqn = sim.agentType === 'dqn'
+  const isDqn     = sim.agentType === 'dqn'
   const hasResult = sim.benchmarkResults.length > 0
 
   return (
@@ -59,37 +61,46 @@ export default function AnalyseView({ sim }: Props) {
         />
         {isDqn
           ? <DQNPanel
-            data={sim.dqnEpisodeData}
-            episodeCount={sim.episodeCount}
-            trainingRunning={sim.trainingRunning}
-            config={sim.dqnConfig}
-            epsilon={sim.epsilon}
-            loss={sim.loss}
-            onEpisodeCountChange={sim.setEpisodeCount}
-            onStartTraining={sim.startTraining}
-            onSaveConfig={sim.saveDQNConfig}
-          />
+              data={sim.dqnEpisodeData}
+              episodeCount={sim.episodeCount}
+              trainingRunning={sim.trainingRunning}
+              config={sim.dqnConfig}
+              epsilon={sim.epsilon}
+              loss={sim.loss}
+              onEpisodeCountChange={sim.setEpisodeCount}
+              onStartTraining={sim.startTraining}
+              onSaveConfig={sim.saveDQNConfig}
+            />
           : <EpisodeChart
-            data={sim.episodeData}
-            episodeCount={sim.episodeCount}
-            trainingRunning={sim.trainingRunning}
-            onEpisodeCountChange={sim.setEpisodeCount}
-            onStartTraining={sim.startTraining}
-            agentType={sim.agentType}
-            rawResults={sim.rawEpisodeResults}
-          />
+              data={sim.episodeData}
+              episodeCount={sim.episodeCount}
+              trainingRunning={sim.trainingRunning}
+              onEpisodeCountChange={sim.setEpisodeCount}
+              onStartTraining={sim.startTraining}
+              agentType={sim.agentType}
+              rawResults={sim.rawEpisodeResults}
+            />
         }
       </div>
 
       <Divider />
 
-      {/* Benchmark nudge */}
-      {!hasResult && (
+      {/* Benchmark nudge — context-aware */}
+      {!hasResult ? (
         <div className="card-bordered px-5 py-3.5 flex items-center gap-3"
-          style={{ borderLeftWidth: '3px', borderLeftColor: 'var(--text-primary)' }}>
+             style={{ borderLeftWidth: '3px', borderLeftColor: 'var(--text-primary)' }}>
           <ArrowRight size={14} style={{ color: 'var(--text-primary)', flexShrink: 0 }} />
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
             Run the experiment below to compare all agents across all scenarios with stability analysis.
+          </p>
+        </div>
+      ) : (
+        <div className="card-bordered px-5 py-3.5 flex items-center gap-3"
+             style={{ borderLeftWidth: '3px', borderLeftColor: 'var(--positive)' }}>
+          <CheckCircle2 size={14} style={{ color: 'var(--positive)', flexShrink: 0 }} />
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+            Benchmark complete — results loaded. For demos, keep this page open
+            so judges see results instantly without waiting for a re-run.
           </p>
         </div>
       )}
