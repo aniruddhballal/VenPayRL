@@ -94,6 +94,7 @@ export default function App() {
                 onEpisodeCountChange={sim.setEpisodeCount}
                 onStartTraining={sim.startTraining}
                 agentType={sim.agentType}
+                rawResults={sim.rawEpisodeResults}
               />
             )}
 

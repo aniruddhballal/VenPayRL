@@ -41,6 +41,7 @@ export function useSimulation() {
   const [sweepRunning,      setSweepRunning]      = useState(false)
   const [qConfig,           setQConfig]           = useState<QAgentConfig>({ alpha: 0.1, gamma: 0.95, epsilonDecay: 0.995, epsilonMin: 0.05 })
   const [dqnConfig,         setDqnConfig]         = useState<DQNConfig>({ gamma: 0.95, epsilonDecay: 0.995, epsilonMin: 0.05, batchSize: 32, memorySize: 2000, learningRate: 0.001 })
+  const [rawEpisodeResults, setRawEpisodeResults] = useState<EpisodeResult[]>([])
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const load = async () => {
@@ -91,6 +92,7 @@ export function useSimulation() {
     const setter = agentType === 'dqn' ? setDqnEpisodeData : setEpisodeData
     setter([])
     const { results } = await runEpisodes(agentType, episodeCount, scenarioId)
+    setRawEpisodeResults(results)
     setter(computeMovingAvg(results))
     setTrainingRunning(false)
     const s = await resetSim(scenarioId, seed)
@@ -141,5 +143,6 @@ export function useSimulation() {
     dqnConfig, saveDQNConfig,
     load, reset, stepAgent, startAuto, stopAuto,
     startTraining, startExperiment, startSweep,
+    rawEpisodeResults,
   }
 }

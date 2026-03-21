@@ -10,17 +10,19 @@ interface Props {
 }
 
 const agentLabels: Record<AgentType, string> = {
-  rule: 'Rule',
-  random: 'Random',
+  rule:      'Rule',
+  random:    'Random',
   heuristic: 'Heuristic',
-  qtable: 'Q-Table',
+  qtable:    'Q-Table',
+  dqn:       'DQN',
 }
 
 const agentColors: Record<AgentType, string> = {
-  rule: 'text-blue-400',
-  random: 'text-gray-400',
+  rule:      'text-blue-400',
+  random:    'text-gray-400',
   heuristic: 'text-teal-400',
-  qtable: 'text-violet-400',
+  qtable:    'text-violet-400',
+  dqn:       'text-pink-400',
 }
 
 export default function BenchmarkTable({ results, experimentRunning, seeds, trainingEpisodes, onSeedsChange, onRun }: Props) {
@@ -76,7 +78,7 @@ export default function BenchmarkTable({ results, experimentRunning, seeds, trai
                   {bench.stats
                     .sort((a, b) => b.avgReward - a.avgReward)
                     .map(s => (
-                      <tr key={s.agentType} className={`border-b border-gray-800/40 ${s.winner ? 'bg-gray-800/30' : ''}`}>
+                      <tr key={s.agentType} className={`border-b border-gray-800/40 ${s.winner ? 'bg-amber-950/40 border-l-2 border-l-amber-500' : ''}`}>
                         <td className={`py-2 font-semibold ${agentColors[s.agentType]}`}>
                           {agentLabels[s.agentType]}
                         </td>
@@ -86,8 +88,8 @@ export default function BenchmarkTable({ results, experimentRunning, seeds, trai
                         <td className="py-2 text-right font-mono text-red-400">${s.avgPenalties.toFixed(0)}</td>
                         <td className="py-2 text-right">
                           {s.winner && (
-                            <span className="text-xs px-2 py-0.5 bg-amber-900 border border-amber-700 text-amber-400 rounded-full">
-                              winner
+                            <span className="text-xs px-2 py-0.5 bg-amber-500 text-gray-950 font-bold rounded-full">
+                              ★ winner
                             </span>
                           )}
                         </td>
