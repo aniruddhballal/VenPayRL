@@ -49,7 +49,7 @@ VenPayRL/
 │   │       └── dqnAgent.ts        DQN agent with experience replay
 │   └── tests/
 │       ├── simulation.test.ts     22 tests — state, constraints, stochastic
-│       ├── metrics.test.ts        10 tests — reward, export, scenario configs
+│       ├── metrics.test.ts        15 tests — reward, export, cashDelta, JSON/CSV
 │       └── agents.test.ts         19 tests — all agents, edge cases
 └── frontend/
     └── src/
@@ -57,7 +57,7 @@ VenPayRL/
         ├── api.ts                 Axios API calls with error interceptor
         ├── types.ts               Shared frontend types
         ├── hooks/
-        │   └── useSimulation.ts   All state and simulation logic
+        │   └── useSimulation.ts   All state, streaming, and simulation logic
         └── components/
             ├── Header.tsx
             ├── Controls.tsx
@@ -75,6 +75,8 @@ VenPayRL/
             ├── QConfigPanel.tsx
             ├── HyperparamSweep.tsx
             ├── ExportButton.tsx
+            ├── HealthCheck.tsx
+            ├── TrainingProgress.tsx
             ├── AllPaidBanner.tsx
             └── LoadingScreen.tsx
 ```
@@ -87,7 +89,7 @@ VenPayRL/
 
 ```bash
 # Clone
-git clone https://github.com/aniruddhballal/VenPayRL.git
+git clone https://github.com/YOUR_USERNAME/VenPayRL.git
 cd VenPayRL
 
 # Backend
@@ -118,11 +120,12 @@ npm run validate
 | GET | `/api/scenarios` | All available scenarios |
 | POST | `/api/reset` | Reset sim (`scenarioId`, `seed`) |
 | POST | `/api/agent-step` | Advance one step (`agentType`) |
-| POST | `/api/run-episodes` | Train for N episodes (`agentType`, `episodes`, `scenarioId`) |
-| POST | `/api/run-experiment` | Full benchmark — all agents × all scenarios (`seeds`, `trainingEpisodes`) |
+| GET | `/api/run-episodes-stream` | SSE stream — live episode training updates |
+| POST | `/api/run-experiment` | Full benchmark — all agents × all scenarios |
 | POST | `/api/q-config` | Update Q-agent hyperparameters |
 | POST | `/api/dqn-config` | Update DQN hyperparameters |
 | POST | `/api/hyperparameter-sweep` | Batch runs over param grid |
+| GET | `/api/health-check` | One episode per agent on balanced/seed 42 |
 
 ---
 
@@ -192,7 +195,13 @@ step_reward =
   + (cash × 0.0001)             each step        (small conservation bonus, avoids hoarding bias)
 ```
 
-The cash conservation bonus is deliberately small to prevent random agents that hoard cash from competing with structured agents on reward alone.
+The cash conservation bonus is deliberately small to prevent agents that hoard cash from competing with structured agents on reward alone.
+
+---
+
+## Live Training Stream
+
+Training runs use Server-Sent Events (SSE) — the episode chart and DQN panel update in real time as each preview batch arrives. A `TrainingProgress` bar shows current episode and percentage. The stream is cancelled cleanly on reset or when a new training run starts.
 
 ---
 
@@ -209,6 +218,12 @@ Winner per scenario is determined by highest average reward. Results exportable 
 
 ---
 
+## Health Check
+
+The **Run Health Check** button runs one episode per agent on the balanced scenario with seed 42 and returns a pass/fail table. Use this before any demo to verify the simulation and all agents are functioning correctly.
+
+---
+
 ## Hyperparameter Sweep
 
 Define a grid of 1–2 parameters with comma-separated values, choose episode count and seed count per combination, and run. Results are ranked by average reward with a bar chart. Works for both Q-table and DQN agents.
@@ -222,12 +237,12 @@ cd backend
 npm test
 ```
 
-51 tests across three files:
+56 tests across three files:
 
 | File | Tests | Covers |
 |---|---|---|
 | `simulation.test.ts` | 22 | State creation, step constraints, stochastic, terminal |
-| `metrics.test.ts` | 10 | Reward calculation, log correctness, export, scenario configs |
+| `metrics.test.ts` | 15 | Reward, cashDelta, CSV/JSON export, no-NaN, structure |
 | `agents.test.ts` | 19 | All agents, edge cases (zero cash, empty invoices, stochastic extremes) |
 
 For quick manual validation:
@@ -251,28 +266,30 @@ A single-file simulation with one rule-based agent, no learning, no scenarios, a
 - 5 scenarios including a stochastic environment
 - Seeded RNG for full reproducibility
 - Hard constraints: no negative cash, no overpaying
-- Episode training loop up to 2000 episodes
-- Per-episode reward chart with 20-episode moving average
+- SSE streaming training — live reward preview updating every N episodes
+- Episode training up to 2000 episodes with real-time chart updates
 - DQN dedicated panel: reward, loss curve, epsilon decay, hyperparameter sliders
 - Full benchmark suite: all agents × all scenarios × configurable seeds
 - Avg reward ± std deviation per agent-scenario pair
-- Hyperparameter sweep with bar chart ranked results
+- Health check endpoint and UI panel — one-click pre-demo sanity check
+- Hyperparameter sweep with ranked bar chart results
 - Action heatmap: colour-coded per-invoice decisions across all days
 - Scenario comparison dashboard: grouped bar chart across all agents
-- Metrics panel: total reward, final cash, cash delta, penalties paid
+- Metrics panel with hover tooltips explaining each metric
+- Axis labels on all charts
+- Agent colour dot legend in benchmark table
 - CSV and JSON export for episodes and benchmark results
-- 51 Vitest tests + validate.ts for ad-hoc checks
+- 56 Vitest tests + validate.ts for ad-hoc checks
 - Modular codebase: isolated components, custom hook, agent directory
-- Bug fixes: DQN tensor memory leak, epsilon freeze post-training, reward calibration, agent urgency thresholds, private field hacks replaced with proper methods
+- Bug fixes: DQN tensor memory leak, epsilon freeze post-training, reward calibration, agent urgency thresholds, private field hacks replaced with proper methods, unused initialCash parameter now computes cashDelta
 
 ---
 
 ## Known Issues / Next Steps
 
-- DQN training is synchronous and blocks the Express thread on long runs — candidate for SSE streaming or worker threads
+- DQN training in run-experiment is still synchronous — candidate for worker threads on very large episode counts
 - No persistent Q-table or DQN weights across sessions — training resets on server restart
 - No curriculum learning — agents always start from the same scenario difficulty
-- Live reward preview during long training runs not yet implemented
 
 ---
 
