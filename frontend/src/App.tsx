@@ -1,19 +1,23 @@
 import { useEffect } from 'react'
-import { useSimulation } from './hooks/useSimulation'
-import LoadingScreen     from './components/LoadingScreen'
-import Header            from './components/Header'
-import Controls          from './components/Controls'
-import AllPaidBanner     from './components/AllPaidBanner'
-import InvoiceTable      from './components/InvoiceTable'
-import Charts            from './components/Charts'
-import ActionLog         from './components/ActionLog'
-import AgentSelector     from './components/AgentSelector'
-import ScenarioSelector  from './components/ScenarioSelector'
-import MetricsPanel      from './components/MetricsPanel'
-import EpisodeChart      from './components/EpisodeChart'
-import BenchmarkTable    from './components/BenchmarkTable'
-import QConfigPanel      from './components/QConfigPanel'
-import ExportButton      from './components/ExportButton'
+import { useSimulation }     from './hooks/useSimulation'
+import LoadingScreen         from './components/LoadingScreen'
+import Header                from './components/Header'
+import Controls              from './components/Controls'
+import AllPaidBanner         from './components/AllPaidBanner'
+import InvoiceTable          from './components/InvoiceTable'
+import Charts                from './components/Charts'
+import ActionLog             from './components/ActionLog'
+import ActionHeatmap         from './components/ActionHeatmap'
+import AgentSelector         from './components/AgentSelector'
+import ScenarioSelector      from './components/ScenarioSelector'
+import MetricsPanel          from './components/MetricsPanel'
+import EpisodeChart          from './components/EpisodeChart'
+import DQNPanel              from './components/DQNPanel'
+import BenchmarkTable        from './components/BenchmarkTable'
+import ScenarioDashboard     from './components/ScenarioDashboard'
+import QConfigPanel          from './components/QConfigPanel'
+import HyperparamSweep       from './components/HyperparamSweep'
+import ExportButton          from './components/ExportButton'
 
 export default function App() {
   const sim = useSimulation()
@@ -33,11 +37,12 @@ export default function App() {
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-          {/* Left sidebar */}
+          {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
             <AgentSelector
               agentType={sim.agentType}
               epsilon={sim.epsilon}
+              loss={sim.loss}
               onChange={sim.setAgentType}
             />
             <ScenarioSelector
@@ -51,14 +56,11 @@ export default function App() {
               initialCash={initialCash}
             />
             {sim.agentType === 'qtable' && (
-              <QConfigPanel
-                config={sim.qConfig}
-                onSave={sim.saveQConfig}
-              />
+              <QConfigPanel config={sim.qConfig} onSave={sim.saveQConfig} />
             )}
           </div>
 
-          {/* Main content */}
+          {/* Main */}
           <div className="lg:col-span-3 space-y-6">
             <Controls
               running={sim.running}
@@ -70,19 +72,46 @@ export default function App() {
               onStop={sim.stopAuto}
               onSpeedChange={sim.setSpeed}
             />
+
             {allPaid && <AllPaidBanner totalReward={sim.state.totalReward} />}
+
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               <InvoiceTable invoices={sim.state.invoices} />
               <Charts history={sim.history} />
             </div>
-            <EpisodeChart
-              data={sim.episodeData}
-              episodeCount={sim.episodeCount}
-              trainingRunning={sim.trainingRunning}
-              onEpisodeCountChange={sim.setEpisodeCount}
-              onStartTraining={sim.startTraining}
-              agentType={sim.agentType}
+
+            <ActionHeatmap
+              invoices={sim.state.invoices}
+              actionHistory={sim.actionHistory}
             />
+
+            {/* Q-Table training panel */}
+            {sim.agentType !== 'dqn' && (
+              <EpisodeChart
+                data={sim.episodeData}
+                episodeCount={sim.episodeCount}
+                trainingRunning={sim.trainingRunning}
+                onEpisodeCountChange={sim.setEpisodeCount}
+                onStartTraining={sim.startTraining}
+                agentType={sim.agentType}
+              />
+            )}
+
+            {/* DQN dedicated panel */}
+            {sim.agentType === 'dqn' && (
+              <DQNPanel
+                data={sim.dqnEpisodeData}
+                episodeCount={sim.episodeCount}
+                trainingRunning={sim.trainingRunning}
+                config={sim.dqnConfig}
+                epsilon={sim.epsilon}
+                loss={sim.loss}
+                onEpisodeCountChange={sim.setEpisodeCount}
+                onStartTraining={sim.startTraining}
+                onSaveConfig={sim.saveDQNConfig}
+              />
+            )}
+
             <BenchmarkTable
               results={sim.benchmarkResults}
               experimentRunning={sim.experimentRunning}
@@ -91,13 +120,23 @@ export default function App() {
               onSeedsChange={sim.setExperimentSeeds}
               onRun={sim.startExperiment}
             />
+
+            <ScenarioDashboard results={sim.benchmarkResults} />
+
+            <HyperparamSweep
+              sweepResults={sim.sweepResults}
+              sweepRunning={sim.sweepRunning}
+              scenarioId={sim.scenarioId}
+              onRun={sim.startSweep}
+            />
+
             <ExportButton
               benchmarkResults={sim.benchmarkResults}
               episodeData={sim.episodeData}
             />
+
             <ActionLog log={sim.state.log} />
           </div>
-
         </div>
       </div>
     </div>

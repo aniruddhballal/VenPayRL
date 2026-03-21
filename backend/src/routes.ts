@@ -1,54 +1,77 @@
 import { Router, type Request, type Response } from 'express'
 import { createStateFromScenario, stepSimulation, computeMetrics, isTerminal, makeRng } from './simulation'
-import { ruleAgentDecide }      from './agents/ruleAgent'
-import { randomAgentDecide }    from './agents/randomAgent'
-import { heuristicAgentDecide } from './agents/heuristicAgent'
-import { QAgent, defaultQConfig } from './agents/qAgent'
-import { scenarios, getScenario } from './scenarios'
-import type { SimState, AgentAction, AgentType, EpisodeResult, BenchmarkResult, AgentScenarioStats, QAgentConfig } from './types'
+import { ruleAgentDecide }              from './agents/ruleAgent'
+import { randomAgentDecide }            from './agents/randomAgent'
+import { heuristicAgentDecide }         from './agents/heuristicAgent'
+import { QAgent, defaultQConfig }       from './agents/qAgent'
+import { DQNAgent, defaultDQNConfig }   from './agents/dqnAgent'
+import { scenarios, getScenario }       from './scenarios'
+import type {
+  SimState, AgentAction, AgentType,
+  EpisodeResult, BenchmarkResult, AgentScenarioStats,
+  QAgentConfig, DQNConfig, HyperparamSweepConfig, SweepResult,
+} from './types'
 
 export const router = Router()
 
-let state: SimState         = createStateFromScenario(getScenario('balanced'))
-let currentScenarioId       = 'balanced'
-let currentSeed             = 42
-let qConfig: QAgentConfig   = { ...defaultQConfig }
-const qAgent                = new QAgent(10000, qConfig)
+let state: SimState       = createStateFromScenario(getScenario('balanced'))
+let currentScenarioId     = 'balanced'
+let currentSeed           = 42
+let qConfig: QAgentConfig = { ...defaultQConfig }
+let dqnConfig: DQNConfig  = { ...defaultDQNConfig }
+const qAgent              = new QAgent(10000, qConfig)
+const dqnAgent            = new DQNAgent(10000, dqnConfig)
 
-function runEpisode(
+async function runEpisode(
   agentType: AgentType,
   scenarioId: string,
   seed: number,
-  qAgentInstance: QAgent
-): { finalState: SimState; initialCash: number } {
-  const scenario  = getScenario(scenarioId)
-  const rng       = makeRng(seed)
-  let epState     = createStateFromScenario(scenario)
+  qInst: QAgent,
+  dqnInst: DQNAgent,
+): Promise<{ finalState: SimState; initialCash: number; loss: number }> {
+  const scenario = getScenario(scenarioId)
+  const rng      = makeRng(seed)
+  let epState    = createStateFromScenario(scenario)
+  let totalLoss  = 0
+  let lossSteps  = 0
 
   const decide = (s: SimState): AgentAction[] => {
     if (agentType === 'rule')      return ruleAgentDecide(s)
     if (agentType === 'random')    return randomAgentDecide(s, rng)
     if (agentType === 'heuristic') return heuristicAgentDecide(s)
-    if (agentType === 'qtable')    return qAgentInstance.decide(s)
+    if (agentType === 'qtable')    return qInst.decide(s)
+    if (agentType === 'dqn')       return dqnInst.decide(s)
     return ruleAgentDecide(s)
   }
 
   while (!isTerminal(epState)) {
-    const prevLog = epState.log.length
-    const actions = decide(epState)
-    epState = stepSimulation(epState, actions)
+    const prevState = epState
+    const prevLog   = epState.log.length
+    const actions   = decide(epState)
+    epState = stepSimulation(epState, actions, scenario, rng)
 
     if (agentType === 'qtable') {
       const newEntries = epState.log.slice(prevLog)
       for (const entry of newEntries) {
         const inv = epState.invoices.find(i => i.vendor === entry.vendor)
-        if (inv) qAgentInstance.update(inv.id, parseFloat(entry.reward), epState)
+        if (inv) qInst.update(inv.id, parseFloat(entry.reward), epState)
       }
-      qAgentInstance.decayEpsilon()
+      qInst.decayEpsilon()
+    }
+
+    if (agentType === 'dqn') {
+      dqnInst.rememberFromStep(prevState, actions, epState)
+      const loss = await dqnInst.replay()
+      if (loss > 0) { totalLoss += loss; lossSteps++ }
+      dqnInst.decayEpsilon()
     }
   }
 
-  return { finalState: epState, initialCash: scenario.cash }
+  return {
+    finalState:  epState,
+    initialCash: scenario.cash,
+    loss:        lossSteps > 0 ? totalLoss / lossSteps : 0,
+  }
 }
 
 router.get('/state',     (_req, res) => res.json(state))
@@ -69,21 +92,28 @@ router.post('/q-config', (req: Request, res: Response) => {
   res.json({ ok: true, config: qConfig })
 })
 
-router.post('/agent-step', (req: Request, res: Response) => {
+router.post('/dqn-config', (req: Request, res: Response) => {
+  dqnConfig = { ...defaultDQNConfig, ...req.body }
+  dqnAgent.updateConfig(dqnConfig)
+  res.json({ ok: true, config: dqnConfig })
+})
+
+router.post('/agent-step', async (req: Request, res: Response) => {
   const agentType: AgentType = req.body.agentType ?? 'rule'
-  const rng = makeRng(Date.now())
+  const scenario = getScenario(currentScenarioId)
+  const rng      = makeRng(Date.now())
+  const prevState = state
+  const prevLog   = state.log.length
+  let actions: AgentAction[]
 
-  const decide = (s: SimState): AgentAction[] => {
-    if (agentType === 'rule')      return ruleAgentDecide(s)
-    if (agentType === 'random')    return randomAgentDecide(s, rng)
-    if (agentType === 'heuristic') return heuristicAgentDecide(s)
-    if (agentType === 'qtable')    return qAgent.decide(s)
-    return ruleAgentDecide(s)
-  }
+  if (agentType === 'rule')      actions = ruleAgentDecide(state)
+  else if (agentType === 'random')    actions = randomAgentDecide(state, rng)
+  else if (agentType === 'heuristic') actions = heuristicAgentDecide(state)
+  else if (agentType === 'qtable')    actions = qAgent.decide(state)
+  else if (agentType === 'dqn')       actions = dqnAgent.decide(state)
+  else actions = ruleAgentDecide(state)
 
-  const prevLog = state.log.length
-  const actions = decide(state)
-  state = stepSimulation(state, actions)
+  state = stepSimulation(state, actions, scenario, rng)
 
   if (agentType === 'qtable') {
     const newEntries = state.log.slice(prevLog)
@@ -93,83 +123,139 @@ router.post('/agent-step', (req: Request, res: Response) => {
     }
   }
 
-  res.json({ state, actions, epsilon: qAgent.getEpsilon() })
+  let loss = 0
+  if (agentType === 'dqn') {
+    dqnAgent.rememberFromStep(prevState, actions, state)
+    loss = await dqnAgent.replay()
+    dqnAgent.decayEpsilon()
+  }
+
+  res.json({
+    state, actions,
+    epsilon: agentType === 'dqn' ? dqnAgent.getEpsilon() : qAgent.getEpsilon(),
+    loss,
+    // Action records for visualization
+    actionRecords: actions.map(a => ({
+      day:       state.day,
+      invoiceId: a.invoiceId,
+      vendor:    state.invoices.find(i => i.id === a.invoiceId)?.vendor ?? '',
+      action:    a.type,
+    })),
+  })
 })
 
-router.post('/run-episodes', (req: Request, res: Response) => {
+router.post('/run-episodes', async (req: Request, res: Response) => {
   const agentType: AgentType = req.body.agentType ?? 'rule'
   const episodes: number     = Math.min(req.body.episodes ?? 300, 2000)
   const scenarioId: string   = req.body.scenarioId ?? currentScenarioId
   const results: EpisodeResult[] = []
 
   if (agentType === 'qtable') qAgent.resetEpsilon()
+  if (agentType === 'dqn')    dqnAgent.resetEpsilon()
 
   for (let ep = 0; ep < episodes; ep++) {
-    const { finalState, initialCash } = runEpisode(agentType, scenarioId, currentSeed + ep, qAgent)
-    results.push({ episode: ep + 1, metrics: computeMetrics(finalState, initialCash) })
+    const { finalState, initialCash, loss } = await runEpisode(agentType, scenarioId, currentSeed + ep, qAgent, dqnAgent)
+    results.push({
+      episode: ep + 1,
+      metrics: computeMetrics(finalState, initialCash),
+      loss,
+      epsilon: agentType === 'dqn' ? dqnAgent.getEpsilon() : qAgent.getEpsilon(),
+    })
   }
 
   state = createStateFromScenario(getScenario(scenarioId))
-  res.json({ results, epsilon: qAgent.getEpsilon() })
+  res.json({ results, epsilon: agentType === 'dqn' ? dqnAgent.getEpsilon() : qAgent.getEpsilon() })
 })
 
-router.post('/run-experiment', (req: Request, res: Response) => {
+router.post('/run-experiment', async (req: Request, res: Response) => {
   const seeds: number    = req.body.seeds ?? 10
   const episodes: number = req.body.trainingEpisodes ?? 300
-  const agentTypes: AgentType[] = ['rule', 'random', 'heuristic', 'qtable']
+  const agentTypes: AgentType[] = ['rule', 'random', 'heuristic', 'qtable', 'dqn']
   const benchmarkResults: BenchmarkResult[] = []
 
   for (const scenario of scenarios) {
     const statsPerAgent: AgentScenarioStats[] = []
 
     for (const agentType of agentTypes) {
-      // Train Q-agent fresh per scenario before benchmarking
-      const freshQ = new QAgent(scenario.cash, qConfig)
+      const freshQ   = new QAgent(scenario.cash, qConfig)
+      const freshDQN = new DQNAgent(scenario.cash, dqnConfig)
+
       if (agentType === 'qtable') {
         freshQ.resetEpsilon()
         for (let ep = 0; ep < episodes; ep++) {
-          runEpisode('qtable', scenario.id, currentSeed + ep, freshQ)
+          await runEpisode('qtable', scenario.id, currentSeed + ep, freshQ, freshDQN)
         }
-        // Freeze epsilon for eval
         freshQ.updateConfig({ ...qConfig, epsilonMin: 0, epsilonDecay: 1 })
-        freshQ['epsilon'] = 0
+        ;(freshQ as unknown as { epsilon: number }).epsilon = 0
       }
 
-      const rewards:    number[] = []
-      const cashes:     number[] = []
-      const penalties:  number[] = []
+      if (agentType === 'dqn') {
+        freshDQN.resetEpsilon()
+        for (let ep = 0; ep < episodes; ep++) {
+          await runEpisode('dqn', scenario.id, currentSeed + ep, freshQ, freshDQN)
+        }
+        freshDQN.updateConfig({ ...dqnConfig, epsilonMin: 0, epsilonDecay: 1 })
+      }
 
+      const rewards: number[] = [], cashes: number[] = [], penalties: number[] = []
       for (let s = 0; s < seeds; s++) {
-        const { finalState, initialCash } = runEpisode(agentType, scenario.id, currentSeed + s * 100, freshQ)
+        const { finalState, initialCash } = await runEpisode(agentType, scenario.id, currentSeed + s * 100, freshQ, freshDQN)
         const m = computeMetrics(finalState, initialCash)
-        rewards.push(m.totalReward)
-        cashes.push(m.finalCash)
-        penalties.push(m.totalPenalties)
+        rewards.push(m.totalReward); cashes.push(m.finalCash); penalties.push(m.totalPenalties)
       }
 
-      const avg  = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length
-      const std  = (arr: number[]) => {
-        const mean = avg(arr)
-        return Math.sqrt(arr.reduce((s, x) => s + (x - mean) ** 2, 0) / arr.length)
-      }
+      const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length
+      const std = (arr: number[]) => Math.sqrt(arr.reduce((s, x) => s + (x - avg(arr)) ** 2, 0) / arr.length)
 
       statsPerAgent.push({
-        agentType,
-        scenarioId:   scenario.id,
-        avgReward:    parseFloat(avg(rewards).toFixed(2)),
-        stdReward:    parseFloat(std(rewards).toFixed(2)),
-        avgFinalCash: parseFloat(avg(cashes).toFixed(2)),
-        avgPenalties: parseFloat(avg(penalties).toFixed(2)),
-        winner:       false,
+        agentType, scenarioId: scenario.id,
+        avgReward: parseFloat(avg(rewards).toFixed(2)), stdReward: parseFloat(std(rewards).toFixed(2)),
+        avgFinalCash: parseFloat(avg(cashes).toFixed(2)), avgPenalties: parseFloat(avg(penalties).toFixed(2)),
+        winner: false,
       })
     }
 
-    // Mark winner by highest avgReward
     const best = Math.max(...statsPerAgent.map(s => s.avgReward))
     for (const s of statsPerAgent) s.winner = s.avgReward === best
-
     benchmarkResults.push({ scenarioId: scenario.id, stats: statsPerAgent })
   }
 
   res.json(benchmarkResults)
+})
+
+router.post('/hyperparameter-sweep', async (req: Request, res: Response) => {
+  const config: HyperparamSweepConfig = req.body
+  const results: SweepResult[]        = []
+
+  for (const v1 of config.values1) {
+    const vals2 = config.values2 ?? [undefined]
+    for (const v2 of vals2) {
+      const freshQ   = new QAgent(10000, { ...qConfig, [config.param1]: v1, ...(config.param2 && v2 !== undefined ? { [config.param2]: v2 } : {}) })
+      const freshDQN = new DQNAgent(10000, { ...dqnConfig, [config.param1]: v1, ...(config.param2 && v2 !== undefined ? { [config.param2]: v2 } : {}) })
+
+      if (config.agentType === 'qtable') freshQ.resetEpsilon()
+      if (config.agentType === 'dqn')    freshDQN.resetEpsilon()
+
+      for (let ep = 0; ep < config.episodes; ep++) {
+        await runEpisode(config.agentType, config.scenarioId, currentSeed + ep, freshQ, freshDQN)
+      }
+
+      const rewards: number[] = []
+      for (let s = 0; s < config.seeds; s++) {
+        const { finalState, initialCash } = await runEpisode(config.agentType, config.scenarioId, currentSeed + s * 100, freshQ, freshDQN)
+        rewards.push(computeMetrics(finalState, initialCash).totalReward)
+      }
+
+      const avg = rewards.reduce((a, b) => a + b, 0) / rewards.length
+      const std = Math.sqrt(rewards.reduce((s, x) => s + (x - avg) ** 2, 0) / rewards.length)
+      results.push({
+        param1Val:  v1,
+        avgReward:  parseFloat(avg.toFixed(2)),
+        stdReward:  parseFloat(std.toFixed(2)),
+        ...(v2 !== undefined ? { param2Val: v2 } : {}),
+      })
+    }
+  }
+
+  res.json(results)
 })

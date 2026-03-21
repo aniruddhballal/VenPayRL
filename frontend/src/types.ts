@@ -30,13 +30,14 @@ export interface AgentAction {
   amount?: number
 }
 
-export type AgentType = 'rule' | 'random' | 'heuristic' | 'qtable'
+export type AgentType = 'rule' | 'random' | 'heuristic' | 'qtable' | 'dqn'
 
 export interface ScenarioConfig {
   id: string
   label: string
   description: string
   cash: number
+  stochastic?: boolean
 }
 
 export interface Metrics {
@@ -48,14 +49,18 @@ export interface Metrics {
 }
 
 export interface EpisodeResult {
-  episode: number
-  metrics: Metrics
+  episode:  number
+  metrics:  Metrics
+  loss?:    number
+  epsilon?: number
 }
 
 export interface EpisodePoint {
-  episode:   number
-  reward:    number
-  movingAvg: number
+  episode:    number
+  reward:     number
+  movingAvg:  number
+  loss?:      number
+  epsilon?:   number
 }
 
 export interface HistoryPoint {
@@ -84,4 +89,46 @@ export interface QAgentConfig {
   gamma:        number
   epsilonDecay: number
   epsilonMin:   number
+}
+
+export interface DQNConfig {
+  gamma:        number
+  epsilonDecay: number
+  epsilonMin:   number
+  batchSize:    number
+  memorySize:   number
+  learningRate: number
+}
+
+export interface HyperparamSweepConfig {
+  param1:     string
+  values1:    number[]
+  param2?:    string
+  values2?:   number[]
+  episodes:   number
+  seeds:      number
+  agentType:  'qtable' | 'dqn'
+  scenarioId: string
+}
+
+export interface SweepResult {
+  param1Val:  number
+  param2Val?: number
+  avgReward:  number
+  stdReward:  number
+}
+
+export interface ActionRecord {
+  day:       number
+  invoiceId: string
+  vendor:    string
+  action:    'full' | 'partial' | 'delay' | 'overdue'
+}
+
+export interface EpisodePoint {
+  episode:   number
+  reward:    number
+  movingAvg: number
+  loss?:     number
+  epsilon?:  number
 }

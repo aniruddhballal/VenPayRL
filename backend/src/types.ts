@@ -30,7 +30,7 @@ export interface AgentAction {
   amount?: number
 }
 
-export type AgentType = 'rule' | 'random' | 'heuristic' | 'qtable'
+export type AgentType = 'rule' | 'random' | 'heuristic' | 'qtable' | 'dqn'
 
 export interface ScenarioConfig {
   id: string
@@ -38,6 +38,9 @@ export interface ScenarioConfig {
   description: string
   cash: number
   invoices: Omit<Invoice, 'id' | 'paid' | 'delayed'>[]
+  stochastic?: boolean
+  lateFeeVariance?: number   // 0–1, e.g. 0.2 = ±20%
+  cashInflowMean?: number    // mean daily cash inflow
 }
 
 export interface Metrics {
@@ -49,8 +52,10 @@ export interface Metrics {
 }
 
 export interface EpisodeResult {
-  episode: number
-  metrics: Metrics
+  episode:  number
+  metrics:  Metrics
+  loss?:    number
+  epsilon?: number
 }
 
 export interface AgentScenarioStats {
@@ -73,4 +78,38 @@ export interface QAgentConfig {
   gamma:        number
   epsilonDecay: number
   epsilonMin:   number
+}
+
+export interface DQNConfig {
+  gamma:        number
+  epsilonDecay: number
+  epsilonMin:   number
+  batchSize:    number
+  memorySize:   number
+  learningRate: number
+}
+
+export interface HyperparamSweepConfig {
+  param1:  keyof QAgentConfig | keyof DQNConfig
+  values1: number[]
+  param2?: keyof QAgentConfig | keyof DQNConfig
+  values2?: number[]
+  episodes: number
+  seeds:    number
+  agentType: 'qtable' | 'dqn'
+  scenarioId: string
+}
+
+export interface SweepResult {
+  param1Val:  number
+  param2Val?: number
+  avgReward:  number
+  stdReward:  number
+}
+
+export interface ActionRecord {
+  day:      number
+  invoiceId: string
+  vendor:   string
+  action:   'full' | 'partial' | 'delay' | 'overdue'
 }
