@@ -119,9 +119,9 @@ export default function HyperparamSweep({ sweepResults, sweepRunning, scenarioId
       <button
         onClick={handleRun}
         disabled={sweepRunning}
-        className="w-full px-4 py-2 text-xs bg-teal-800 border border-teal-600 rounded hover:bg-teal-700 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors"
+        className="btn-primary w-full justify-center"
       >
-        <>{sweepRunning ? 'Running sweep...' : <><Zap size={13} /> Run Sweep</>}</>
+        <Zap size={13} /> {sweepRunning ? 'Running sweep' : 'Run Sweep'}
       </button>
 
       {sweepResults.length > 0 && (
