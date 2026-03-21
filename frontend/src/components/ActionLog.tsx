@@ -2,47 +2,37 @@ import type { LogEntry } from '../types'
 
 interface Props { log: LogEntry[] }
 
-const actionMeta: Record<string, { color: string; label: string }> = {
-  FULL_PAY:    { color: 'var(--color-positive)', label: 'Full Pay' },
-  PARTIAL_PAY: { color: 'var(--color-warning)',  label: 'Partial'  },
-  DELAYED:     { color: 'var(--color-negative)', label: 'Delayed'  },
-  OVERDUE:     { color: '#991b1b',               label: 'Overdue'  },
+const actionMeta: Record<string, { color: string; bg: string; label: string }> = {
+  FULL_PAY:    { color: 'var(--positive)', bg: '#F0FBF4', label: 'Full Pay'  },
+  PARTIAL_PAY: { color: 'var(--warning)',  bg: '#FDF6EC', label: 'Partial'   },
+  DELAYED:     { color: 'var(--negative)', bg: '#FDF2F2', label: 'Delayed'   },
+  OVERDUE:     { color: '#8B2020',         bg: '#FDF2F2', label: 'Overdue'   },
 }
 
 export default function ActionLog({ log }: Props) {
   return (
     <div className="card p-5">
-      <p className="text-[11px] uppercase tracking-[0.08em] mb-4"
-         style={{ color: 'var(--color-text-muted)' }}>
-        Action Log
-      </p>
-      <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+      <p className="label mb-4">Action Log</p>
+      <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
         {[...log].reverse().map((entry, i) => {
-          const meta = actionMeta[entry.action] ?? { color: '#6b6b6b', label: entry.action }
+          const meta = actionMeta[entry.action] ?? { color: 'var(--text-muted)', bg: 'var(--surface-raised)', label: entry.action }
           const reward = parseFloat(entry.reward)
           return (
-            <div
-              key={i}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs fade-in"
-              style={{
-                background: 'var(--color-surface-raised)',
-                borderLeft: `3px solid ${meta.color}`,
-              }}
-            >
-              <span className="w-10 shrink-0" style={{ color: 'var(--color-text-muted)' }}>
+            <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg fade-up"
+                 style={{ borderLeft: `2.5px solid ${meta.color}`, background: meta.bg }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', width: '28px', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
                 D{entry.day}
               </span>
-              <span className="w-24 shrink-0 font-medium truncate" style={{ color: 'var(--color-text-primary)' }}>
+              <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-primary)', width: '90px', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {entry.vendor}
               </span>
-              <span className="w-16 shrink-0 text-[10px] font-medium uppercase tracking-wide"
-                    style={{ color: meta.color }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: meta.color, width: '56px', flexShrink: 0, letterSpacing: '0.03em' }}>
                 {meta.label}
               </span>
-              <span className="w-16 shrink-0" style={{ color: 'var(--color-text-secondary)' }}>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', width: '52px', flexShrink: 0 }}>
                 ${parseFloat(entry.amount).toFixed(0)}
               </span>
-              <span className="font-medium" style={{ color: reward >= 0 ? 'var(--color-positive)' : 'var(--color-negative)' }}>
+              <span style={{ fontSize: '12px', fontWeight: 500, color: reward >= 0 ? 'var(--positive)' : 'var(--negative)', fontVariantNumeric: 'tabular-nums' }}>
                 {reward >= 0 ? '+' : ''}{reward.toFixed(1)}
               </span>
             </div>

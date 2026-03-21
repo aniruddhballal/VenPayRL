@@ -2,25 +2,21 @@ interface Props { episode: number; total: number; agentType: string }
 
 export default function TrainingProgress({ episode, total, agentType }: Props) {
   const pct = total > 0 ? Math.round((episode / total) * 100) : 0
-
   return (
-    <div className="card px-5 py-4 space-y-2 fade-in">
+    <div className="card-bordered px-5 py-4 space-y-2.5 fade-up">
       <div className="flex justify-between items-center">
-        <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+        <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>
           Training {agentType}
         </span>
-        <span style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-secondary)', fontSize: '14px' }}>
+        <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
           {episode} / {total}
         </span>
       </div>
-      <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--color-border)' }}>
-        <div
-          className="h-full rounded-full transition-all duration-300"
-          style={{ width: `${pct}%`, background: '#0a0a0a' }}
-        />
+      <div style={{ height: '3px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: 'var(--text-primary)', transition: 'width 300ms ease', borderRadius: '2px' }} />
       </div>
-      <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-        {pct}% complete — reward preview updating live
+      <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+        {pct}% — reward preview updating live
       </p>
     </div>
   )

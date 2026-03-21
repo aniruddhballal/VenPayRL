@@ -1,24 +1,22 @@
+import { CheckCircle2, Clock, AlertCircle } from 'lucide-react'
 import type { Invoice } from '../types'
 
 interface Props { invoices: Invoice[] }
 
 function StatusBadge({ inv }: { inv: Invoice }) {
   if (inv.paid) return (
-    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
-          style={{ background: '#f0fdf4', color: 'var(--color-positive)' }}>
-      <span>✓</span> Paid
+    <span className="inline-flex items-center gap-1.5" style={{ fontSize: '12px', color: 'var(--positive)' }}>
+      <CheckCircle2 size={12} /> Paid
     </span>
   )
   if (inv.delayed > 0) return (
-    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
-          style={{ background: '#fef2f2', color: 'var(--color-negative)' }}>
-      <span>!</span> Late {inv.delayed}d
+    <span className="inline-flex items-center gap-1.5" style={{ fontSize: '12px', color: 'var(--negative)' }}>
+      <AlertCircle size={12} /> Late {inv.delayed}d
     </span>
   )
   return (
-    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
-          style={{ background: 'var(--color-surface-raised)', color: 'var(--color-text-muted)' }}>
-      Pending
+    <span className="inline-flex items-center gap-1.5" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+      <Clock size={12} /> Pending
     </span>
   )
 }
@@ -26,40 +24,30 @@ function StatusBadge({ inv }: { inv: Invoice }) {
 export default function InvoiceTable({ invoices }: Props) {
   return (
     <div className="card p-5">
-      <p className="text-[11px] uppercase tracking-[0.08em] mb-4"
-         style={{ color: 'var(--color-text-muted)' }}>
-        Invoices
-      </p>
+      <p className="label mb-4">Invoices</p>
       <table className="w-full">
         <thead>
-          <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+          <tr style={{ borderBottom: '1px solid var(--border)' }}>
             {['Vendor', 'Amount', 'Due', 'Penalty', 'Status'].map(h => (
-              <th key={h} className="pb-2 text-left text-[11px] font-medium uppercase tracking-[0.06em]"
-                  style={{ color: 'var(--color-text-muted)' }}>
-                {h}
-              </th>
+              <th key={h} className="label pb-2 text-left font-medium">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {invoices.map(inv => (
-            <tr key={inv.id} className="hoverable"
-                style={{ borderBottom: '1px solid var(--color-border)', opacity: inv.paid ? 0.4 : 1, transition: 'opacity 400ms ease' }}>
-              <td className="py-2.5 text-sm font-medium" style={{ color: 'var(--color-text-primary)', textDecoration: inv.paid ? 'line-through' : 'none' }}>
+            <tr key={inv.id} className="row-hover"
+                style={{ borderBottom: '1px solid var(--border)', opacity: inv.paid ? 0.45 : 1, transition: 'opacity 400ms ease' }}>
+              <td className="py-2.5" style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)', textDecoration: inv.paid ? 'line-through' : 'none' }}>
                 {inv.vendor}
               </td>
-              <td className="py-2.5 text-sm" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}>
+              <td className="py-2.5" style={{ fontFamily: 'var(--font-display)', fontSize: '15px', color: 'var(--text-primary)' }}>
                 ${inv.amount.toFixed(0)}
               </td>
-              <td className="py-2.5 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                D{inv.dueDate}
-              </td>
-              <td className="py-2.5 text-sm" style={{ color: inv.penaltyRate >= 0.1 ? 'var(--color-negative)' : 'var(--color-text-secondary)' }}>
+              <td className="py-2.5" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>D{inv.dueDate}</td>
+              <td className="py-2.5" style={{ fontSize: '13px', color: inv.penaltyRate >= 0.1 ? 'var(--negative)' : 'var(--text-secondary)' }}>
                 {(inv.penaltyRate * 100).toFixed(0)}%
               </td>
-              <td className="py-2.5">
-                <StatusBadge inv={inv} />
-              </td>
+              <td className="py-2.5"><StatusBadge inv={inv} /></td>
             </tr>
           ))}
         </tbody>

@@ -1,3 +1,4 @@
+import { Zap } from 'lucide-react'
 import type { BenchmarkResult, AgentType } from '../types'
 
 interface Props {
@@ -5,87 +6,72 @@ interface Props {
   trainingEpisodes: number; onSeedsChange: (n: number) => void; onRun: () => void
 }
 
-const agentLabels: Record<AgentType, string> = {
-  rule: 'Rule', random: 'Random', heuristic: 'Heuristic', qtable: 'Q-Table', dqn: 'DQN',
-}
-const agentColors: Record<AgentType, string> = {
-  rule: '#3b82f6', random: '#a8a8a8', heuristic: '#10b981', qtable: '#8b5cf6', dqn: '#ec4899',
-}
+const agentLabels: Record<AgentType, string> = { rule: 'Rule', random: 'Random', heuristic: 'Heuristic', qtable: 'Q-Table', dqn: 'DQN' }
+const agentDot:   Record<AgentType, string>  = { rule: '#3B82F6', random: '#A8A49C', heuristic: '#10B981', qtable: '#8B5CF6', dqn: '#EC4899' }
 
 export default function BenchmarkTable({ results, experimentRunning, seeds, trainingEpisodes, onSeedsChange, onRun }: Props) {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-          <span>Seeds</span>
+        <div className="flex items-center gap-3">
+          <span className="label">Seeds</span>
           <input type="range" min={5} max={30} step={5} value={seeds}
-                 onChange={e => onSeedsChange(Number(e.target.value))}
-                 className="w-20" style={{ accentColor: '#0a0a0a' }} />
-          <span style={{ fontFamily: 'var(--font-display)' }}>{seeds}</span>
-          <span className="ml-2">× {trainingEpisodes} train eps</span>
+                 onChange={e => onSeedsChange(Number(e.target.value))} style={{ width: '80px' }} />
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', color: 'var(--text-primary)' }}>{seeds}</span>
+          <span className="label ml-2">× {trainingEpisodes} train eps</span>
         </div>
-        <button
-          onClick={onRun} disabled={experimentRunning}
-          className="inline-flex items-center gap-2 h-8 px-4 rounded-lg text-sm font-medium transition-all"
-          style={{ background: '#0a0a0a', color: 'white', opacity: experimentRunning ? 0.5 : 1, cursor: experimentRunning ? 'not-allowed' : 'pointer' }}
-        >
-          {experimentRunning ? 'Running…' : '⚡ Run Experiment'}
+        <button onClick={onRun} disabled={experimentRunning} className="btn-primary">
+          <Zap size={13} /> {experimentRunning ? 'Running' : 'Run Experiment'}
         </button>
       </div>
 
       {results.length === 0 ? (
-        <p className="text-sm text-center py-8" style={{ color: 'var(--color-text-muted)' }}>
-          Run experiment to compare all agents across all scenarios
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center', padding: '32px 0' }}>
+          Run the experiment to compare all agents across all scenarios
         </p>
       ) : (
         <div className="space-y-6">
           {results.map(bench => (
             <div key={bench.scenarioId}>
-              <p className="text-[11px] uppercase tracking-[0.08em] mb-3 capitalize"
-                 style={{ color: 'var(--color-text-muted)' }}>
+              <p className="label mb-3" style={{ textTransform: 'capitalize' }}>
                 {bench.scenarioId.replace('-', ' ')}
               </p>
               <table className="w-full">
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    {['Agent', 'Avg Reward', '± Std', 'Avg Cash', 'Avg Penalties', ''].map(h => (
-                      <th key={h} className="pb-2 text-left text-[10px] font-medium uppercase tracking-[0.06em]"
-                          style={{ color: 'var(--color-text-muted)' }}>
-                        {h}
-                      </th>
+                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                    {['Agent', 'Avg Reward', '± Std', 'Avg Cash', 'Penalties', ''].map(h => (
+                      <th key={h} className="label pb-2 text-left font-medium">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {[...bench.stats].sort((a, b) => b.avgReward - a.avgReward).map(s => (
-                    <tr key={s.agentType} className="hoverable"
-                        style={{
-                          borderBottom: '1px solid var(--color-border)',
-                          background: s.winner ? '#fffbf0' : 'transparent',
-                        }}>
-                      <td className="py-2.5 text-sm font-medium" style={{ color: agentColors[s.agentType] }}>
+                    <tr key={s.agentType} className="row-hover"
+                        style={{ borderBottom: '1px solid var(--border)', background: s.winner ? '#FFFBF0' : 'transparent' }}>
+                      <td className="py-2.5">
                         <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full" style={{ background: agentColors[s.agentType] }} />
-                          {agentLabels[s.agentType]}
+                          <div className="w-2 h-2 rounded-full" style={{ background: agentDot[s.agentType] }} />
+                          <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>
+                            {agentLabels[s.agentType]}
+                          </span>
                         </div>
                       </td>
-                      <td className="py-2.5 text-sm" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}>
+                      <td className="py-2.5" style={{ fontFamily: 'var(--font-display)', fontSize: '15px', color: 'var(--text-primary)' }}>
                         {s.avgReward.toFixed(1)}
                       </td>
-                      <td className="py-2.5 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                      <td className="py-2.5" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                         ±{s.stdReward.toFixed(1)}
                       </td>
-                      <td className="py-2.5 text-xs" style={{ color: 'var(--color-positive)' }}>
+                      <td className="py-2.5" style={{ fontSize: '12px', color: 'var(--positive)' }}>
                         ${s.avgFinalCash.toFixed(0)}
                       </td>
-                      <td className="py-2.5 text-xs" style={{ color: 'var(--color-negative)' }}>
+                      <td className="py-2.5" style={{ fontSize: '12px', color: 'var(--negative)' }}>
                         ${s.avgPenalties.toFixed(0)}
                       </td>
                       <td className="py-2.5">
                         {s.winner && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                                style={{ background: '#d97706', color: 'white' }}>
-                            ★ winner
+                          <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 8px', borderRadius: '20px', background: 'var(--warning)', color: '#fff' }}>
+                            winner
                           </span>
                         )}
                       </td>

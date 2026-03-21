@@ -1,13 +1,12 @@
 export default function LoadingScreen() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4"
-         style={{ background: '#fafafa' }}>
-      <div className="w-8 h-8 bg-black rounded-sm flex items-center justify-center">
-        <span className="text-white text-[10px] font-semibold">VP</span>
+    <div className="min-h-screen flex flex-col items-center justify-center gap-3"
+         style={{ background: 'var(--bg)' }}>
+      <div className="w-7 h-7 rounded flex items-center justify-center"
+           style={{ background: 'var(--text-primary)' }}>
+        <span style={{ color: '#fff', fontSize: '9px', fontWeight: 700 }}>VP</span>
       </div>
-      <p className="text-sm" style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-sans)' }}>
-        Loading VenPayRL...
-      </p>
+      <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Loading VenPayRL</p>
     </div>
   )
 }

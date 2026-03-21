@@ -9,35 +9,25 @@ export default function MetricsPanel({ state, initialCash }: Props) {
   const cashDelta = state.cash - initialCash
 
   const metrics = [
-    { label: 'Total Reward',   value: state.totalReward.toFixed(1), color: state.totalReward >= 0 ? 'var(--color-positive)' : 'var(--color-negative)', tip: 'Cumulative reward this episode' },
-    { label: 'Cash',           value: `$${state.cash.toLocaleString()}`, color: 'var(--color-positive)', tip: 'Current available cash' },
-    { label: 'Cash Δ',         value: `${cashDelta >= 0 ? '+' : ''}$${cashDelta.toFixed(0)}`, color: cashDelta >= 0 ? 'var(--color-positive)' : 'var(--color-negative)', tip: 'Change from starting cash' },
-    { label: 'Penalties',      value: `$${penalties.toFixed(0)}`, color: 'var(--color-negative)', tip: 'Total penalty dollars accrued' },
-    { label: 'Invoices',       value: `${state.invoices.filter(i => i.paid).length}/${state.invoices.length}`, color: 'var(--color-text-primary)', tip: 'Settled vs total invoices' },
-    { label: 'Day',            value: String(state.day), color: 'var(--color-text-primary)', tip: 'Current simulation day' },
+    { label: 'Total Reward',  value: state.totalReward.toFixed(1), color: state.totalReward >= 0 ? 'var(--positive)' : 'var(--negative)', tip: 'Cumulative reward this episode' },
+    { label: 'Cash',          value: `$${state.cash.toLocaleString()}`,  color: 'var(--positive)', tip: 'Current available cash' },
+    { label: 'Cash Delta',    value: `${cashDelta >= 0 ? '+' : ''}$${cashDelta.toFixed(0)}`, color: cashDelta >= 0 ? 'var(--positive)' : 'var(--negative)', tip: 'Change from starting cash' },
+    { label: 'Penalties',     value: `$${penalties.toFixed(0)}`, color: 'var(--negative)', tip: 'Total penalty dollars' },
+    { label: 'Invoices',      value: `${state.invoices.filter(i => i.paid).length}/${state.invoices.length}`, color: 'var(--text-primary)', tip: 'Settled vs total' },
+    { label: 'Day',           value: String(state.day), color: 'var(--text-primary)', tip: 'Current day' },
   ]
 
   return (
-    <div className="card p-5">
-      <p className="text-[11px] uppercase tracking-[0.08em] mb-4"
-         style={{ color: 'var(--color-text-muted)' }}>
-        Metrics
-      </p>
-      <div className="grid grid-cols-2 gap-3">
+    <div className="card p-4">
+      <p className="label mb-3">Metrics</p>
+      <div className="grid grid-cols-2 gap-2">
         {metrics.map(m => (
-          <div key={m.label}
-               className="group relative rounded-lg p-3 cursor-default"
-               style={{ background: 'var(--color-surface-raised)' }}>
-            <p className="text-[10px] uppercase tracking-[0.06em] mb-1"
-               style={{ color: 'var(--color-text-muted)' }}>
-              {m.label}
-            </p>
-            <p className="text-lg" style={{ fontFamily: 'var(--font-display)', color: m.color }}>
-              {m.value}
-            </p>
-            {/* Tooltip */}
-            <div className="glass absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-40 px-3 py-2 rounded-lg text-xs text-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
-                 style={{ color: 'var(--color-text-secondary)' }}>
+          <div key={m.label} className="group relative rounded-lg p-3 cursor-default"
+               style={{ background: 'var(--surface-raised)' }}>
+            <p className="label mb-1">{m.label}</p>
+            <p className="metric-value tick" style={{ color: m.color }}>{m.value}</p>
+            <div className="glass absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 rounded-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                 style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
               {m.tip}
             </div>
           </div>

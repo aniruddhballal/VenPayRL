@@ -1,57 +1,39 @@
 import { useState } from 'react'
 import type { QAgentConfig } from '../types'
 
-interface Props {
-  config: QAgentConfig
-  onSave: (c: QAgentConfig) => void
-}
+interface Props { config: QAgentConfig; onSave: (c: QAgentConfig) => void }
 
-interface SliderDef {
-  key: keyof QAgentConfig
-  label: string
-  min: number
-  max: number
-  step: number
-}
-
-const sliders: SliderDef[] = [
-  { key: 'alpha', label: 'Learning Rate (α)', min: 0.01, max: 0.5, step: 0.01 },
-  { key: 'gamma', label: 'Discount Factor (γ)', min: 0.5, max: 0.99, step: 0.01 },
-  { key: 'epsilonDecay', label: 'Epsilon Decay', min: 0.98, max: 0.999, step: 0.001 },
-  { key: 'epsilonMin', label: 'Epsilon Min', min: 0.01, max: 0.2, step: 0.01 },
+const sliders = [
+  { key: 'alpha' as const,        label: 'Learning Rate α',  min: 0.01, max: 0.5,   step: 0.01  },
+  { key: 'gamma' as const,        label: 'Discount γ',       min: 0.5,  max: 0.99,  step: 0.01  },
+  { key: 'epsilonDecay' as const, label: 'Epsilon Decay',    min: 0.98, max: 0.999, step: 0.001 },
+  { key: 'epsilonMin' as const,   label: 'Epsilon Min',      min: 0.01, max: 0.2,   step: 0.01  },
 ]
 
 export default function QConfigPanel({ config, onSave }: Props) {
   const [local, setLocal] = useState<QAgentConfig>(config)
-
-  const update = (key: keyof QAgentConfig, val: number) =>
-    setLocal(c => ({ ...c, [key]: val }))
+  const update = (k: keyof QAgentConfig, v: number) => setLocal(c => ({ ...c, [k]: v }))
 
   return (
-    <div className="bg-white border border-neutral-200 rounded-xl p-5">
-      <h2 className="text-xs uppercase tracking-widest text-neutral-400 mb-4">Q-Agent Tuning</h2>
+    <div className="card p-4">
+      <p className="label mb-4">Q-Agent Tuning</p>
       <div className="space-y-4">
         {sliders.map(s => (
           <div key={s.key}>
-            <div className="flex justify-between text-xs text-neutral-500 mb-1">
-              <span>{s.label}</span>
-              <span className="font-mono text-neutral-700">{local[s.key].toFixed(3)}</span>
+            <div className="flex justify-between items-center mb-1.5">
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{s.label}</span>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', color: 'var(--text-primary)' }}>
+                {local[s.key].toFixed(3)}
+              </span>
             </div>
-            <input
-              type="range"
-              min={s.min} max={s.max} step={s.step}
-              value={local[s.key]}
-              onChange={e => update(s.key, Number(e.target.value))}
-              className="w-full accent-neutral-900"
-            />
+            <input type="range" min={s.min} max={s.max} step={s.step}
+                   value={local[s.key]} onChange={e => update(s.key, Number(e.target.value))}
+                   style={{ width: '100%' }} />
           </div>
         ))}
       </div>
-      <button
-        onClick={() => onSave(local)}
-        className="mt-4 w-full px-3 py-2 text-xs bg-neutral-900 border border-neutral-900 rounded hover:bg-violet-600 transition-colors text-white"
-      >
-        Apply Configa
+      <button onClick={() => onSave(local)} className="btn-primary mt-4 w-full justify-center">
+        Apply Config
       </button>
     </div>
   )
