@@ -28,28 +28,28 @@ export default function QConfigPanel({ config, onSave }: Props) {
     setLocal(c => ({ ...c, [key]: val }))
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-      <h2 className="text-xs uppercase tracking-widest text-gray-500 mb-4">Q-Agent Tuning</h2>
+    <div className="bg-white border border-neutral-200 rounded-xl p-5">
+      <h2 className="text-xs uppercase tracking-widest text-neutral-400 mb-4">Q-Agent Tuning</h2>
       <div className="space-y-4">
         {sliders.map(s => (
           <div key={s.key}>
-            <div className="flex justify-between text-xs text-gray-400 mb-1">
+            <div className="flex justify-between text-xs text-neutral-500 mb-1">
               <span>{s.label}</span>
-              <span className="font-mono text-violet-300">{local[s.key].toFixed(3)}</span>
+              <span className="font-mono text-neutral-700">{local[s.key].toFixed(3)}</span>
             </div>
             <input
               type="range"
               min={s.min} max={s.max} step={s.step}
               value={local[s.key]}
               onChange={e => update(s.key, Number(e.target.value))}
-              className="w-full accent-violet-500"
+              className="w-full accent-neutral-900"
             />
           </div>
         ))}
       </div>
       <button
         onClick={() => onSave(local)}
-        className="mt-4 w-full px-3 py-2 text-xs bg-violet-700 border border-violet-500 rounded hover:bg-violet-600 transition-colors text-white"
+        className="mt-4 w-full px-3 py-2 text-xs bg-neutral-900 border border-neutral-900 rounded hover:bg-violet-600 transition-colors text-white"
       >
         Apply Configa
       </button>

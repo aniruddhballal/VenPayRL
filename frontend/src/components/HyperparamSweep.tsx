@@ -43,45 +43,45 @@ export default function HyperparamSweep({ sweepResults, sweepRunning, scenarioId
   const maxReward = sweepResults.length > 0 ? Math.max(...sweepResults.map(r => r.avgReward)) : 0
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-      <h2 className="text-xs uppercase tracking-widest text-gray-500 mb-4">Hyperparameter Sweep</h2>
+    <div className="bg-white border border-neutral-200 rounded-xl p-5">
+      <h2 className="text-xs uppercase tracking-widest text-neutral-400 mb-4">Hyperparameter Sweep</h2>
 
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div>
-          <label className="text-xs text-gray-500 block mb-1">Agent</label>
+          <label className="text-xs text-neutral-400 block mb-1">Agent</label>
           <select
             value={agentType}
             onChange={e => { setAgentType(e.target.value as 'qtable' | 'dqn'); setParam1(e.target.value === 'qtable' ? 'alpha' : 'learningRate') }}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-300"
+            className="w-full bg-neutral-100 border border-neutral-200 rounded px-2 py-1.5 text-sm text-neutral-700"
           >
             <option value="qtable">Q-Table</option>
             <option value="dqn">DQN</option>
           </select>
         </div>
         <div>
-          <label className="text-xs text-gray-500 block mb-1">Param 1</label>
+          <label className="text-xs text-neutral-400 block mb-1">Param 1</label>
           <select
             value={param1}
             onChange={e => setParam1(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-300"
+            className="w-full bg-neutral-100 border border-neutral-200 rounded px-2 py-1.5 text-sm text-neutral-700"
           >
             {params.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
         </div>
         <div className="col-span-2">
-          <label className="text-xs text-gray-500 block mb-1">Values for Param 1 (comma-separated)</label>
+          <label className="text-xs text-neutral-400 block mb-1">Values for Param 1 (comma-separated)</label>
           <input
             type="text" value={values1}
             onChange={e => setValues1(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-300 font-mono"
+            className="w-full bg-neutral-100 border border-neutral-200 rounded px-2 py-1.5 text-sm text-neutral-700 font-mono"
           />
         </div>
         <div>
-          <label className="text-xs text-gray-500 block mb-1">Param 2 (optional)</label>
+          <label className="text-xs text-neutral-400 block mb-1">Param 2 (optional)</label>
           <select
             value={param2}
             onChange={e => setParam2(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-300"
+            className="w-full bg-neutral-100 border border-neutral-200 rounded px-2 py-1.5 text-sm text-neutral-700"
           >
             <option value="">None</option>
             {params.filter(p => p !== param1).map(p => <option key={p} value={p}>{p}</option>)}
@@ -89,28 +89,28 @@ export default function HyperparamSweep({ sweepResults, sweepRunning, scenarioId
         </div>
         {param2 && (
           <div>
-            <label className="text-xs text-gray-500 block mb-1">Values for Param 2</label>
+            <label className="text-xs text-neutral-400 block mb-1">Values for Param 2</label>
             <input
               type="text" value={values2}
               onChange={e => setValues2(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-300 font-mono"
+              className="w-full bg-neutral-100 border border-neutral-200 rounded px-2 py-1.5 text-sm text-neutral-700 font-mono"
             />
           </div>
         )}
         <div>
-          <label className="text-xs text-gray-500 block mb-1">Episodes per combo</label>
+          <label className="text-xs text-neutral-400 block mb-1">Episodes per combo</label>
           <input
             type="number" value={episodes} min={50} max={1000}
             onChange={e => setEpisodes(Number(e.target.value))}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-300"
+            className="w-full bg-neutral-100 border border-neutral-200 rounded px-2 py-1.5 text-sm text-neutral-700"
           />
         </div>
         <div>
-          <label className="text-xs text-gray-500 block mb-1">Seeds per combo</label>
+          <label className="text-xs text-neutral-400 block mb-1">Seeds per combo</label>
           <input
             type="number" value={seeds} min={1} max={20}
             onChange={e => setSeeds(Number(e.target.value))}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-300"
+            className="w-full bg-neutral-100 border border-neutral-200 rounded px-2 py-1.5 text-sm text-neutral-700"
           />
         </div>
       </div>
@@ -125,31 +125,31 @@ export default function HyperparamSweep({ sweepResults, sweepRunning, scenarioId
 
       {sweepResults.length > 0 && (
         <div className="mt-4 space-y-1.5">
-          <div className="text-xs text-gray-500 mb-2">Results — sorted by avg reward</div>
+          <div className="text-xs text-neutral-400 mb-2">Results — sorted by avg reward</div>
           {[...sweepResults]
             .sort((a, b) => b.avgReward - a.avgReward)
             .map((r, i) => (
               <div key={i} className="flex items-center gap-3 text-xs">
                 <div className="flex gap-2 min-w-40">
-                  <span className="text-gray-500">{param1}=</span>
-                  <span className="font-mono text-violet-300">{r.param1Val}</span>
+                  <span className="text-neutral-400">{param1}=</span>
+                  <span className="font-mono text-neutral-700">{r.param1Val}</span>
                   {r.param2Val !== undefined && (
                     <>
-                      <span className="text-gray-500">{param2}=</span>
-                      <span className="font-mono text-violet-300">{r.param2Val}</span>
+                      <span className="text-neutral-400">{param2}=</span>
+                      <span className="font-mono text-neutral-700">{r.param2Val}</span>
                     </>
                   )}
                 </div>
-                <div className="flex-1 bg-gray-800 rounded-full h-2">
+                <div className="flex-1 bg-neutral-100 rounded-full h-2">
                   <div
                     className="h-2 rounded-full bg-violet-500 transition-all"
                     style={{ width: `${Math.max(0, (r.avgReward / maxReward) * 100)}%` }}
                   />
                 </div>
-                <span className={`font-mono w-16 text-right ${i === 0 ? 'text-amber-400 font-bold' : 'text-gray-300'}`}>
+                <span className={`font-mono w-16 text-right ${i === 0 ? 'text-amber-400 font-bold' : 'text-neutral-700'}`}>
                   {r.avgReward.toFixed(1)}
                 </span>
-                <span className="font-mono text-gray-600 w-14 text-right">±{r.stdReward.toFixed(1)}</span>
+                <span className="font-mono text-neutral-400 w-14 text-right">±{r.stdReward.toFixed(1)}</span>
               </div>
             ))}
         </div>

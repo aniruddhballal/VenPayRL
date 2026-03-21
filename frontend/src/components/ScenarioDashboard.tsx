@@ -24,14 +24,14 @@ const agentLabels: Record<AgentType, string> = {
 const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number }[]; label?: string }) => {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-gray-900 border border-gray-700 rounded p-2 text-xs space-y-1">
-      <div className="text-gray-400 mb-1 capitalize">{label}</div>
+    <div className="bg-white border border-neutral-200 rounded p-2 text-xs space-y-1">
+      <div className="text-neutral-500 mb-1 capitalize">{label}</div>
       {payload.map(p => (
         <div key={p.name} className="flex justify-between gap-4">
           <span style={{ color: agentColors[p.name as AgentType] }}>
             {agentLabels[p.name as AgentType] ?? p.name}
           </span>
-          <span className="text-gray-200 font-mono">{p.value.toFixed(1)}</span>
+          <span className="text-neutral-800 font-mono">{p.value.toFixed(1)}</span>
         </div>
       ))}
     </div>
@@ -51,15 +51,15 @@ export default function ScenarioDashboard({ results }: Props) {
   const agentTypes = results[0]?.stats.map(s => s.agentType) ?? []
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-      <h2 className="text-xs uppercase tracking-widest text-gray-500 mb-4">
+    <div className="bg-white border border-neutral-200 rounded-xl p-5">
+      <h2 className="text-xs uppercase tracking-widest text-neutral-400 mb-4">
         Scenario Dashboard — Avg Reward by Agent
       </h2>
       <ResponsiveContainer width="100%" height={280}>
         <BarChart data={chartData} barCategoryGap="25%" barGap={2}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-          <XAxis dataKey="scenario" stroke="#4b5563" tick={{ fontSize: 11 }} />
-          <YAxis stroke="#4b5563" tick={{ fontSize: 11 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <XAxis dataKey="scenario" stroke="#a8a8a8" tick={{ fontSize: 11 }} />
+          <YAxis stroke="#a8a8a8" tick={{ fontSize: 11 }} />
           <Tooltip content={<CustomTooltip />} />
           <Legend
             formatter={val => agentLabels[val as AgentType] ?? val}
