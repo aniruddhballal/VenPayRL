@@ -6,7 +6,7 @@ export function randomAgentDecide(state: SimState, rng = makeRng(Date.now())): A
   const actions: AgentAction[] = []
   let remaining = state.cash
 
-  for (const inv of state.invoices.filter(i => !i.paid)) {
+  for (const inv of state.invoices.filter(i => !i.paid && i.amount >= 1)) {
     const roll = rng()
     const cost = inv.amount * (1 + inv.penaltyRate * inv.delayed)
 

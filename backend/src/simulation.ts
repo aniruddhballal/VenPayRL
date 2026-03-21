@@ -33,14 +33,16 @@ export function stepSimulation(
   // Stochastic cash inflow
   if (scenario?.stochastic && scenario.cashInflowMean && rng) {
     const inflow = scenario.cashInflowMean * (0.5 + rng())
-    next.cash   += inflow
+    next.cash += inflow
   }
 
   const actionMap = new Map(actions.map(a => [a.invoiceId, a]))
-  let stepReward  = 0
+  let stepReward = 0
 
   for (const inv of next.invoices) {
     if (inv.paid) continue
+    // clear any invoice paid down to zero through partials
+    if (inv.amount < 1) { inv.paid = true; continue }
 
     const action = actionMap.get(inv.id)
 
@@ -55,47 +57,52 @@ export function stepSimulation(
       if (next.cash < cost) {
         inv.delayed += 1
         const penalty = inv.amount * inv.penaltyRate * penaltyMult
-        stepReward   -= penalty
+        stepReward -= penalty
         next.log.push({ day: next.day, vendor: inv.vendor, action: 'DELAYED', amount: penalty.toFixed(2), reward: (-penalty).toFixed(2) })
         continue
       }
-      next.cash     -= cost
-      const r        = 10 - inv.delayed * 2
-      stepReward    += r
+      next.cash -= cost
+      const r = 10 - inv.delayed * 2
+      stepReward += r
       next.log.push({ day: next.day, vendor: inv.vendor, action: 'FULL_PAY', amount: cost.toFixed(2), reward: r.toFixed(2) })
       inv.paid = true
 
     } else if (action?.type === 'partial') {
-      const partial  = Math.min(action.amount ?? inv.amount * 0.4, next.cash, inv.amount)
+      const partial = Math.min(action.amount ?? inv.amount * 0.4, next.cash, inv.amount)
       if (partial <= 0) {
-        inv.delayed += 1
-        const penalty = inv.amount * inv.penaltyRate * penaltyMult
-        stepReward   -= penalty
-        next.log.push({ day: next.day, vendor: inv.vendor, action: 'DELAYED', amount: penalty.toFixed(2), reward: (-penalty).toFixed(2) })
+        // nothing left to pay — mark as cleared
+        inv.paid = true
         continue
       }
-      next.cash  -= partial
-      inv.amount -= partial
+      next.cash -= partial
+      inv.amount = parseFloat((inv.amount - partial).toFixed(2))
+      // clear negligible remainder — avoid floating point death spiral
+      if (inv.amount < 1) inv.paid = true
       stepReward -= 2
       next.log.push({ day: next.day, vendor: inv.vendor, action: 'PARTIAL_PAY', amount: partial.toFixed(2), reward: '-2' })
 
     } else if (action?.type === 'delay') {
       inv.delayed += 1
-      const penalty  = inv.amount * inv.penaltyRate * penaltyMult
-      stepReward    -= penalty
+      const penalty = inv.amount * inv.penaltyRate * penaltyMult
+      stepReward -= penalty
       next.log.push({ day: next.day, vendor: inv.vendor, action: 'DELAYED', amount: penalty.toFixed(2), reward: (-penalty).toFixed(2) })
 
     } else if (next.day >= inv.dueDate + inv.delayed) {
-      inv.delayed += 1
-      const penalty  = inv.amount * inv.penaltyRate * 2 * penaltyMult
-      stepReward    -= penalty
-      next.log.push({ day: next.day, vendor: inv.vendor, action: 'OVERDUE', amount: penalty.toFixed(2), reward: (-penalty).toFixed(2) })
+      if (inv.amount < 1) {
+        // effectively paid off through partials — clear it
+        inv.paid = true
+      } else {
+        inv.delayed += 1
+        const penalty = inv.amount * inv.penaltyRate * 2 * penaltyMult
+        stepReward -= penalty
+        next.log.push({ day: next.day, vendor: inv.vendor, action: 'OVERDUE', amount: penalty.toFixed(2), reward: (-penalty).toFixed(2) })
+      }
     }
   }
 
-  stepReward       += next.cash * 0.0005
-  next.totalReward  = parseFloat((next.totalReward + stepReward).toFixed(2))
-  next.cash         = parseFloat(next.cash.toFixed(2))
+  stepReward += next.cash * 0.0005
+  next.totalReward = parseFloat((next.totalReward + stepReward).toFixed(2))
+  next.cash = parseFloat(next.cash.toFixed(2))
   return next
 }
 
@@ -104,11 +111,11 @@ export function computeMetrics(state: SimState, initialCash: number): Metrics {
     .filter(e => e.action === 'DELAYED' || e.action === 'OVERDUE')
     .reduce((sum, e) => sum + parseFloat(e.amount), 0)
   return {
-    totalReward:    state.totalReward,
-    finalCash:      state.cash,
-    cashDelta:      parseFloat((state.cash - initialCash).toFixed(2)),
+    totalReward: state.totalReward,
+    finalCash: state.cash,
+    cashDelta: parseFloat((state.cash - initialCash).toFixed(2)),
     totalPenalties: parseFloat(totalPenalties.toFixed(2)),
-    invoicesPaid:   state.invoices.filter(i => i.paid).length,
+    invoicesPaid: state.invoices.filter(i => i.paid).length,
     invoicesUnpaid: state.invoices.filter(i => !i.paid).length,
   }
 }

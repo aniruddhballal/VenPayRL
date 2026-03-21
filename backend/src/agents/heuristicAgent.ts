@@ -10,8 +10,7 @@ export function heuristicAgentDecide(state: SimState): AgentAction[] {
   const actions: AgentAction[] = []
   let remaining = state.cash
 
-  const unpaid = invoices
-    .filter(i => !i.paid)
+  const unpaid = invoices.filter(i => !i.paid && i.amount >= 1)
     .sort((a, b) => urgencyScore(b, day) - urgencyScore(a, day))
 
   for (const inv of unpaid) {

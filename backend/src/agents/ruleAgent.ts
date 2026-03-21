@@ -6,7 +6,7 @@ export function ruleAgentDecide(state: SimState): AgentAction[] {
   let remaining = state.cash
 
   const unpaid = invoices
-    .filter(i => !i.paid)
+    .filter(i => !i.paid && i.amount >= 1)
     .sort((a, b) => (a.dueDate + a.delayed) - (b.dueDate + b.delayed))
 
   for (const inv of unpaid) {

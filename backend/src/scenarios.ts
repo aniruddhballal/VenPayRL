@@ -5,7 +5,7 @@ export const scenarios: ScenarioConfig[] = [
     id: 'balanced',
     label: 'Balanced',
     description: 'Standard starting point — reasonable cash, mixed deadlines',
-    cash: 10000,
+    cash: 12000,
     invoices: [
       { vendor: 'Acme Corp',   amount: 2000, dueDate: 5,  penaltyRate: 0.05 },
       { vendor: 'BuildCo',     amount: 3500, dueDate: 8,  penaltyRate: 0.03 },
