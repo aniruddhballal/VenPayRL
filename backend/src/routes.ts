@@ -5,11 +5,12 @@ import { randomAgentDecide }            from './agents/randomAgent'
 import { heuristicAgentDecide }         from './agents/heuristicAgent'
 import { QAgent, defaultQConfig }       from './agents/qAgent'
 import { DQNAgent, defaultDQNConfig }   from './agents/dqnAgent'
-import { scenarios, getScenario }       from './scenarios'
+import { scenarios as _scenarios, getScenario } from './scenarios'
+const scenarios = [..._scenarios]
 import type {
   SimState, AgentAction, AgentType,
   EpisodeResult, BenchmarkResult, AgentScenarioStats,
-  QAgentConfig, DQNConfig, HyperparamSweepConfig, SweepResult,
+  QAgentConfig, DQNConfig, HyperparamSweepConfig, SweepResult, ScenarioConfig
 } from './types'
 
 export const router = Router()
@@ -328,4 +329,39 @@ router.get('/run-episodes-stream', (req: Request, res: Response) => {
     send({ type: 'error', message: String(err) })
     res.end()
   })
+})
+
+router.post('/custom-scenario', (req: Request, res: Response) => {
+  const { cash, invoices } = req.body as {
+    cash: number
+    invoices: { vendor: string; amount: number; dueDate: number; penaltyRate: number }[]
+  }
+
+  if (!cash || !Array.isArray(invoices) || invoices.length === 0) {
+    res.status(400).json({ error: 'cash and invoices required' })
+    return
+  }
+
+  const customScenario: ScenarioConfig = {
+    id:          'custom',
+    label:       'Custom',
+    description: `$${cash.toLocaleString()} cash · ${invoices.length} invoice${invoices.length !== 1 ? 's' : ''}`,
+    cash,
+    invoices:    invoices.map(inv => ({
+      vendor:      inv.vendor || 'Vendor',
+      amount:      Number(inv.amount),
+      dueDate:     Number(inv.dueDate),
+      penaltyRate: Number(inv.penaltyRate) / 100, // frontend sends % e.g. 5 → 0.05
+    })),
+  }
+
+  state = createStateFromScenario(customScenario)
+  currentScenarioId = 'custom'
+
+  // inject into scenarios array for this session so other endpoints can find it
+  const existing = scenarios.findIndex(s => s.id === 'custom')
+  if (existing >= 0) scenarios[existing] = customScenario
+  else scenarios.push(customScenario)
+
+  res.json({ scenario: customScenario, state })
 })

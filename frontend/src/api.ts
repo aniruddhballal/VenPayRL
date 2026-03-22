@@ -79,3 +79,16 @@ export function streamEpisodes(
 
   return () => es.close() // cleanup function
 }
+
+export interface CustomInvoiceInput {
+  vendor:      string
+  amount:      number
+  dueDate:     number
+  penaltyRate: number  // as percentage e.g. 5 for 5%
+}
+
+export const createCustomScenario = (
+  cash: number,
+  invoices: CustomInvoiceInput[]
+): Promise<{ scenario: ScenarioConfig; state: SimState }> =>
+  axios.post(`${BASE}/custom-scenario`, { cash, invoices }).then(r => r.data)

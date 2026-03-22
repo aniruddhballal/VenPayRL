@@ -6,7 +6,7 @@ import {
 import type {
   SimState, HistoryPoint, AgentType, EpisodePoint, EpisodeResult,
   BenchmarkResult, QAgentConfig, DQNConfig, HyperparamSweepConfig,
-  SweepResult, ActionRecord, HealthCheckResult,
+  SweepResult, ActionRecord, HealthCheckResult, ScenarioConfig,
 } from '../types'
 
 function computeMovingAvg(results: EpisodeResult[], window = 20): EpisodePoint[] {
@@ -202,6 +202,18 @@ export function useSimulation() {
     await updateDQNConfig(config)
   }
 
+  const applyCustomScenario = (_scenario: ScenarioConfig, state: SimState) => {
+    stopAuto()
+    setState(state)
+    setScenarioId('custom')
+    setHistory([{ day: 0, cash: state.cash, reward: 0 }])
+    setActionHistory([])
+    setEpisodeData([])
+    setDqnEpisodeData([])
+    setRawEpisodeResults([])
+    setStreamProgress(null)
+  }
+
   return {
     // sim state
     state, history, actionHistory,
@@ -230,5 +242,6 @@ export function useSimulation() {
     // actions
     load, reset, stepAgent, startAuto, stopAuto,
     startTraining, startExperiment, startSweep, startHealthCheck,
+    applyCustomScenario,
   }
 }

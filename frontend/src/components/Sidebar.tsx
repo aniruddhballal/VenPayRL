@@ -55,6 +55,7 @@ export default function Sidebar({ sim }: Props) {
         seed={sim.seed}
         onChange={sim.setScenarioId}
         onSeedChange={sim.setSeed}
+        onCustomApply={sim.applyCustomScenario}
       />
 
       <AgentSelector
