@@ -15,9 +15,10 @@ import type {
 
 export const router = Router()
 
-let state: SimState       = createStateFromScenario(getScenario('balanced'))
-let currentScenarioId     = 'balanced'
-let currentSeed           = 42
+let state: SimState                 = createStateFromScenario(getScenario('balanced'))
+let currentScenarioId               = 'balanced'
+let currentSeed                     = 42
+let currentScenario: ScenarioConfig = getScenario('balanced')
 let qConfig: QAgentConfig = { ...defaultQConfig }
 let dqnConfig: DQNConfig  = { ...defaultDQNConfig }
 const qAgent              = new QAgent(10000, qConfig)
@@ -83,7 +84,8 @@ router.post('/reset', (req: Request, res: Response) => {
   const seed: number       = req.body.seed ?? 42
   currentScenarioId        = scenarioId
   currentSeed              = seed
-  state = createStateFromScenario(getScenario(scenarioId))
+  currentScenario          = scenarios.find(s => s.id === scenarioId) ?? getScenario(scenarioId)
+  state = createStateFromScenario(currentScenario)
   res.json(state)
 })
 
@@ -101,20 +103,19 @@ router.post('/dqn-config', (req: Request, res: Response) => {
 
 router.post('/agent-step', async (req: Request, res: Response) => {
   const agentType: AgentType = req.body.agentType ?? 'rule'
-  const scenario = getScenario(currentScenarioId)
   const rng      = makeRng(Date.now())
   const prevState = state
   const prevLog   = state.log.length
   let actions: AgentAction[]
 
-  if (agentType === 'rule')      actions = ruleAgentDecide(state)
+  if (agentType === 'rule')           actions = ruleAgentDecide(state)
   else if (agentType === 'random')    actions = randomAgentDecide(state, rng)
   else if (agentType === 'heuristic') actions = heuristicAgentDecide(state)
   else if (agentType === 'qtable')    actions = qAgent.decide(state)
   else if (agentType === 'dqn')       actions = dqnAgent.decide(state)
   else actions = ruleAgentDecide(state)
 
-  state = stepSimulation(state, actions, scenario, rng)
+  state = stepSimulation(state, actions, currentScenario, rng)
 
   if (agentType === 'qtable') {
     const newEntries = state.log.slice(prevLog)
@@ -361,6 +362,7 @@ router.post('/custom-scenario', (req: Request, res: Response) => {
 
   state = createStateFromScenario(customScenario)
   currentScenarioId = 'custom'
+  currentScenario   = customScenario
 
   // inject into scenarios array for this session so other endpoints can find it
   const existing = scenarios.findIndex(s => s.id === 'custom')
