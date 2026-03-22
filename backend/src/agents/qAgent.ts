@@ -2,9 +2,10 @@ import type { SimState, AgentAction } from '../types'
 
 const CASH_BUCKETS    = 5
 const URGENCY_BUCKETS = 4
-const OVERDUE_BUCKETS = 3  // 0, 1, 2+
+const OVERDUE_BUCKETS = 3
+const AMOUNT_BUCKETS  = 3  // full / partial / nearly-paid — tracks how much is left
 const ACTIONS         = 3
-const STATE_SIZE      = CASH_BUCKETS * URGENCY_BUCKETS * OVERDUE_BUCKETS
+const STATE_SIZE      = CASH_BUCKETS * URGENCY_BUCKETS * OVERDUE_BUCKETS * AMOUNT_BUCKETS
 
 export interface QAgentConfig {
   alpha:        number  // learning rate
@@ -38,23 +39,36 @@ function overdueBucket(overdueCount: number): number {
   return 2
 }
 
-function stateKey(cb: number, ub: number, ob: number): number {
-  return cb * (URGENCY_BUCKETS * OVERDUE_BUCKETS) + ub * OVERDUE_BUCKETS + ob
+function amountBucket(amount: number, originalAmount: number): number {
+  if (originalAmount <= 0) return 2
+  const ratio = amount / originalAmount
+  if (ratio > 0.75) return 0   // mostly unpaid
+  if (ratio > 0.25) return 1   // partially paid
+  return 2                      // nearly cleared
+}
+
+function stateKey(cb: number, ub: number, ob: number, ab: number): number {
+  return cb * (URGENCY_BUCKETS * OVERDUE_BUCKETS * AMOUNT_BUCKETS)
+       + ub * (OVERDUE_BUCKETS * AMOUNT_BUCKETS)
+       + ob * AMOUNT_BUCKETS
+       + ab
 }
 
 export class QAgent {
-  private table:    number[][]
-  private epsilon:  number
-  private config:   QAgentConfig
-  private maxCash:  number
-  private lastState: Map<string, { stateKey: number; action: number }>
+  private table:          number[][]
+  private epsilon:        number
+  private config:         QAgentConfig
+  private maxCash:        number
+  private lastState:      Map<string, { stateKey: number; action: number }>
+  private originalAmounts: Map<string, number>
 
   constructor(maxCash = 10000, config: QAgentConfig = defaultQConfig) {
-    this.maxCash    = maxCash
-    this.epsilon    = 1.0
-    this.config     = config
-    this.lastState  = new Map()
-    this.table      = Array.from({ length: STATE_SIZE }, () =>
+    this.maxCash         = maxCash
+    this.epsilon         = 1.0
+    this.config          = config
+    this.lastState       = new Map()
+    this.originalAmounts = new Map()
+    this.table           = Array.from({ length: STATE_SIZE }, () =>
       Array.from({ length: ACTIONS }, () => Math.random() * 0.01)
     )
   }
@@ -72,13 +86,20 @@ export class QAgent {
     const ob = overdueBucket(overdueCount)
 
     const unpaid = state.invoices
-      .filter(i => !i.paid)
+      .filter(i => !i.paid && i.amount >= 1)
       .sort((a, b) => (a.dueDate + a.delayed) - (b.dueDate + b.delayed))
 
     for (const inv of unpaid) {
-      const cb = cashBucket(remaining, this.maxCash)
-      const ub = urgencyBucket((inv.dueDate + inv.delayed) - state.day)
-      const sk = stateKey(cb, ub, ob)
+      // track original amounts for amount bucket
+      if (!this.originalAmounts.has(inv.id)) {
+        this.originalAmounts.set(inv.id, inv.amount)
+      }
+      const originalAmount = this.originalAmounts.get(inv.id) ?? inv.amount
+
+      const cb   = cashBucket(remaining, this.maxCash)
+      const ub   = urgencyBucket((inv.dueDate + inv.delayed) - state.day)
+      const ab   = amountBucket(inv.amount, originalAmount)
+      const sk   = stateKey(cb, ub, ob, ab)
       const cost = inv.amount * (1 + inv.penaltyRate * inv.delayed)
 
       let actionIdx: number
@@ -86,10 +107,10 @@ export class QAgent {
         actionIdx = Math.floor(Math.random() * ACTIONS)
       } else {
         const qVals = this.table[sk]!
-        actionIdx = qVals.indexOf(Math.max(...qVals))
+        actionIdx   = qVals.indexOf(Math.max(...qVals))
       }
 
-      if (actionIdx === 2 && remaining >= cost) {
+      if (actionIdx === 2 && remaining >= inv.amount) {
         actions.push({ invoiceId: inv.id, type: 'full' })
         remaining -= cost
       } else if (actionIdx === 1 && remaining > 0) {
@@ -118,11 +139,13 @@ export class QAgent {
       return
     }
 
-    const overdueCount = nextState.invoices.filter(i => !i.paid && nextState.day >= i.dueDate + i.delayed).length
+    const originalAmount = this.originalAmounts.get(invoiceId) ?? inv.amount
+    const overdueCount   = nextState.invoices.filter(i => !i.paid && nextState.day >= i.dueDate + i.delayed).length
     const cb     = cashBucket(nextState.cash, this.maxCash)
     const ub     = urgencyBucket((inv.dueDate + inv.delayed) - nextState.day)
     const ob     = overdueBucket(overdueCount)
-    const nextSk = stateKey(cb, ub, ob)
+    const ab     = amountBucket(inv.amount, originalAmount)
+    const nextSk = stateKey(cb, ub, ob, ab)
     const maxNext = Math.max(...this.table[nextSk]!)
 
     const current = this.table[prev.stateKey]![prev.action]!

@@ -10,8 +10,9 @@ export const defaultDQNConfig: DQNConfig = {
   learningRate: 0.001,
 }
 
-// State vector per invoice: [cashRatio, daysUntilDue (norm), penaltyRate, delayed (norm), overdueCount (norm)]
-const STATE_DIM = 5
+// State vector per invoice:
+// [cashRatio, daysUntilDue (norm), penaltyRate, delayed (norm), overdueCount (norm), amountRatio]
+const STATE_DIM = 6
 const ACTION_DIM = 3  // delay=0, partial=1, full=2
 
 interface Experience {
@@ -22,13 +23,21 @@ interface Experience {
   done: boolean
 }
 
-function invoiceStateVec(inv: { amount: number; dueDate: number; penaltyRate: number; delayed: number }, cash: number, maxCash: number, day: number, overdueCount: number): number[] {
+function invoiceStateVec(
+  inv: { amount: number; dueDate: number; penaltyRate: number; delayed: number },
+  originalAmount: number,
+  cash: number,
+  maxCash: number,
+  day: number,
+  overdueCount: number,
+): number[] {
   return [
     Math.min(cash / maxCash, 1),
     Math.min(Math.max((inv.dueDate + inv.delayed - day) / 20, -1), 1),
     inv.penaltyRate,
     Math.min(inv.delayed / 10, 1),
     Math.min(overdueCount / 5, 1),
+    originalAmount > 0 ? Math.min(inv.amount / originalAmount, 1) : 1,  // amountRatio — how much is left
   ]
 }
 
@@ -40,16 +49,18 @@ export class DQNAgent {
   private config: DQNConfig
   private maxCash: number
   private stepCount: number
+  private originalAmounts: Map<string, number>  // track original invoice amounts
   public lastLoss: number = 0
 
   constructor(maxCash = 10000, config: DQNConfig = defaultDQNConfig) {
-    this.maxCash = maxCash
-    this.config = config
-    this.epsilon = 1.0
-    this.memory = []
-    this.stepCount = 0
-    this.online = this.buildNetwork(config.learningRate)
-    this.target = this.buildNetwork(config.learningRate)
+    this.maxCash          = maxCash
+    this.config           = config
+    this.epsilon          = 1.0
+    this.memory           = []
+    this.stepCount        = 0
+    this.originalAmounts  = new Map()
+    this.online           = this.buildNetwork(config.learningRate)
+    this.target           = this.buildNetwork(config.learningRate)
     this.syncTarget()
   }
 
@@ -81,11 +92,17 @@ export class DQNAgent {
     const overdueCount = state.invoices.filter(i => !i.paid && state.day >= i.dueDate + i.delayed).length
 
     const unpaid = state.invoices
-      .filter(i => !i.paid)
+      .filter(i => !i.paid && i.amount >= 1)
       .sort((a, b) => (a.dueDate + a.delayed) - (b.dueDate + b.delayed))
 
     for (const inv of unpaid) {
-      const vec = invoiceStateVec(inv, remaining, this.maxCash, state.day, overdueCount)
+      // track original amount on first encounter
+      if (!this.originalAmounts.has(inv.id)) {
+        this.originalAmounts.set(inv.id, inv.amount)
+      }
+      const originalAmount = this.originalAmounts.get(inv.id) ?? inv.amount
+
+      const vec  = invoiceStateVec(inv, originalAmount, remaining, this.maxCash, state.day, overdueCount)
       const cost = inv.amount * (1 + inv.penaltyRate * inv.delayed)
       let actionIdx: number
 
@@ -93,14 +110,14 @@ export class DQNAgent {
         actionIdx = Math.floor(Math.random() * ACTION_DIM)
       } else {
         const tensor = tf.tensor2d([vec])
-        const qVals = this.online.predict(tensor) as tf.Tensor
-        const vals = Array.from(qVals.dataSync())
+        const qVals  = this.online.predict(tensor) as tf.Tensor
+        const vals   = Array.from(qVals.dataSync())
         tensor.dispose()
         qVals.dispose()
         actionIdx = vals.indexOf(Math.max(...vals))
       }
 
-      if (actionIdx === 2 && remaining >= cost) {
+      if (actionIdx === 2 && remaining >= inv.amount) {
         actions.push({ invoiceId: inv.id, type: 'full' })
         remaining -= cost
       } else if (actionIdx === 1 && remaining > 0) {
@@ -123,21 +140,26 @@ export class DQNAgent {
 
   rememberFromStep(prevState: SimState, actions: AgentAction[], nextState: SimState): void {
     const overdueCount = prevState.invoices.filter(i => !i.paid && prevState.day >= i.dueDate + i.delayed).length
-    const nextOverdue = nextState.invoices.filter(i => !i.paid && nextState.day >= i.dueDate + i.delayed).length
+    const nextOverdue  = nextState.invoices.filter(i => !i.paid && nextState.day >= i.dueDate + i.delayed).length
 
     for (const act of actions) {
-      const inv = prevState.invoices.find(i => i.id === act.invoiceId)
+      const inv     = prevState.invoices.find(i => i.id === act.invoiceId)
       const nextInv = nextState.invoices.find(i => i.id === act.invoiceId)
       if (!inv) continue
 
-      const stateVec = invoiceStateVec(inv, prevState.cash, this.maxCash, prevState.day, overdueCount)
+      if (!this.originalAmounts.has(inv.id)) {
+        this.originalAmounts.set(inv.id, inv.amount)
+      }
+      const originalAmount = this.originalAmounts.get(inv.id) ?? inv.amount
+
+      const stateVec    = invoiceStateVec(inv, originalAmount, prevState.cash, this.maxCash, prevState.day, overdueCount)
       const nextStateVec = nextInv
-        ? invoiceStateVec(nextInv, nextState.cash, this.maxCash, nextState.day, nextOverdue)
+        ? invoiceStateVec(nextInv, originalAmount, nextState.cash, this.maxCash, nextState.day, nextOverdue)
         : new Array(STATE_DIM).fill(0)
 
       const logEntry = nextState.log.findLast(l => l.vendor === inv.vendor)
-      const reward = logEntry ? parseFloat(logEntry.reward) : 0
-      const done = nextInv?.paid ?? true
+      const reward   = logEntry ? parseFloat(logEntry.reward) : 0
+      const done     = nextInv?.paid ?? true
       const actionIdx = act.type === 'full' ? 2 : act.type === 'partial' ? 1 : 0
 
       this.remember(stateVec, actionIdx, reward, nextStateVec, done)
@@ -147,28 +169,28 @@ export class DQNAgent {
   async replay(): Promise<number> {
     if (this.memory.length < this.config.batchSize) return 0
 
-    const batch = []
+    const batch   = []
     const indices = new Set<number>()
     while (indices.size < this.config.batchSize) {
       indices.add(Math.floor(Math.random() * this.memory.length))
     }
     for (const i of indices) batch.push(this.memory[i]!)
 
-    const states = tf.tensor2d(batch.map(e => e.state))
+    const states     = tf.tensor2d(batch.map(e => e.state))
     const nextStates = tf.tensor2d(batch.map(e => e.nextState))
 
-    const qOnline = this.online.predict(states) as tf.Tensor
+    const qOnline = this.online.predict(states)     as tf.Tensor
     const qTarget = this.target.predict(nextStates) as tf.Tensor
 
     const qOnlineArr = Array.from(qOnline.dataSync())
     const qTargetArr = Array.from(qTarget.dataSync())
 
     const targets = batch.map((exp, i) => {
-      const row = qOnlineArr.slice(i * ACTION_DIM, (i + 1) * ACTION_DIM)
+      const row  = qOnlineArr.slice(i * ACTION_DIM, (i + 1) * ACTION_DIM)
       const tRow = qTargetArr.slice(i * ACTION_DIM, (i + 1) * ACTION_DIM)
       const maxQ = Math.max(...tRow)
-      const tgt = exp.done ? exp.reward : exp.reward + this.config.gamma * maxQ
-      const out = [...row]
+      const tgt  = exp.done ? exp.reward : exp.reward + this.config.gamma * maxQ
+      const out  = [...row]
       out[exp.action] = tgt
       return out
     })
