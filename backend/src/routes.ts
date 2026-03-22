@@ -332,8 +332,9 @@ router.get('/run-episodes-stream', (req: Request, res: Response) => {
 })
 
 router.post('/custom-scenario', (req: Request, res: Response) => {
-  const { cash, invoices } = req.body as {
+  const { cash, invoices, cashInflowPerDay } = req.body as {
     cash: number
+    cashInflowPerDay?: number
     invoices: { vendor: string; amount: number; dueDate: number; penaltyRate: number }[]
   }
 
@@ -343,15 +344,18 @@ router.post('/custom-scenario', (req: Request, res: Response) => {
   }
 
   const customScenario: ScenarioConfig = {
-    id:          'custom',
-    label:       'Custom',
-    description: `$${cash.toLocaleString()} cash · ${invoices.length} invoice${invoices.length !== 1 ? 's' : ''}`,
+    id:           'custom',
+    label:        'Custom',
+    description:  `$${cash.toLocaleString()} cash · ${invoices.length} invoice${invoices.length !== 1 ? 's' : ''}${cashInflowPerDay ? ` · +$${cashInflowPerDay}/day` : ''}`,
     cash,
-    invoices:    invoices.map(inv => ({
+    stochastic:      !!cashInflowPerDay,
+    cashInflowMean:  cashInflowPerDay ?? 0,
+    lateFeeVariance: 0,  // no variance for custom — deterministic inflow
+    invoices: invoices.map(inv => ({
       vendor:      inv.vendor || 'Vendor',
       amount:      Number(inv.amount),
       dueDate:     Number(inv.dueDate),
-      penaltyRate: Number(inv.penaltyRate) / 100, // frontend sends % e.g. 5 → 0.05
+      penaltyRate: Number(inv.penaltyRate) / 100,
     })),
   }
 

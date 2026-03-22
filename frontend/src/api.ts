@@ -89,6 +89,7 @@ export interface CustomInvoiceInput {
 
 export const createCustomScenario = (
   cash: number,
-  invoices: CustomInvoiceInput[]
+  invoices: CustomInvoiceInput[],
+  cashInflowPerDay?: number
 ): Promise<{ scenario: ScenarioConfig; state: SimState }> =>
-  axios.post(`${BASE}/custom-scenario`, { cash, invoices }).then(r => r.data)
+  axios.post(`${BASE}/custom-scenario`, { cash, invoices, cashInflowPerDay }).then(r => r.data)

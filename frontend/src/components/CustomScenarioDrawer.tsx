@@ -22,6 +22,7 @@ export default function CustomScenarioDrawer({ open, onClose, onApply }: Props) 
   const [invoices, setInvoices] = useState<(CustomInvoiceInput & { id: number })[]>([emptyInvoice()])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [cashInflow, setCashInflow] = useState<number>(0)
 
   const addRow = () => setInvoices(i => [...i, emptyInvoice()])
   const removeRow = (id: number) => setInvoices(i => i.filter(r => r.id !== id))
@@ -45,7 +46,7 @@ export default function CustomScenarioDrawer({ open, onClose, onApply }: Props) 
     setError(null)
     setLoading(true)
     try {
-      const { scenario, state } = await createCustomScenario(cash, invoices)
+      const { scenario, state } = await createCustomScenario(cash, invoices, cashInflow || undefined)
       onApply(scenario, state)
       onClose()
     } catch {
@@ -112,6 +113,22 @@ export default function CustomScenarioDrawer({ open, onClose, onApply }: Props) 
             </div>
           </div>
 
+          {/* Daily cash inflow */}
+          <div>
+            <p style={labelStyle}>Daily Cash Inflow <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional — simulates revenue coming in each day)</span></p>
+            <div className="relative">
+              <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '13px', color: 'var(--text-muted)' }}>$</span>
+              <input
+                type="number" min={0} placeholder="0 — no inflow" value={cashInflow || ''}
+                onChange={e => setCashInflow(Number(e.target.value))}
+                style={{ ...inputStyle, paddingLeft: '22px' }}
+              />
+            </div>
+            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+              Added to cash each day before the agent acts. Models daily revenue, drawdowns, or salary inflows.
+            </p>
+          </div>
+
           {/* Summary bar */}
           <div className="flex gap-4 px-4 py-3 rounded-lg" style={{ background: 'var(--surface-raised)' }}>
             <div>
@@ -132,6 +149,14 @@ export default function CustomScenarioDrawer({ open, onClose, onApply }: Props) 
                 {invoices.length}
               </p>
             </div>
+            {cashInflow > 0 && (
+              <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: '16px' }}>
+                <p style={labelStyle}>Daily Inflow</p>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: '16px', color: 'var(--positive)' }}>
+                  +${cashInflow.toLocaleString()}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Invoice table */}
